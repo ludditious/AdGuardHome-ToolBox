@@ -32,7 +32,7 @@ from ..security import (
     verify_password,
     verify_recovery_answer,
 )
-from ..services import ensure_user_defaults, user_has_recovery
+from ..services import ensure_single_user, ensure_user_defaults, user_has_recovery, uses_default_password
 from ..sync_bridge import source_host_ip
 from ..update_checker import apply_update_session, check_for_update
 
@@ -52,10 +52,15 @@ def _auth_ctx(request: Request, **extra):
 
 
 @router.get("/login", response_class=HTMLResponse)
-def login_page(request: Request):
+def login_page(request: Request, db: Session = Depends(get_db)):
     if request.session.get("user_id"):
         return RedirectResponse("/dashboard", status_code=303)
-    return templates.TemplateResponse(request, "login.html", _auth_ctx(request, error=None))
+    user = ensure_single_user(db)
+    return templates.TemplateResponse(
+        request,
+        "login.html",
+        _auth_ctx(request, error=None, show_default_login=uses_default_password(user)),
+    )
 
 
 @router.post("/login")
@@ -68,10 +73,15 @@ def login_submit(
     name = username.strip()
     user = db.query(User).filter(User.username == name).first()
     if not user or not verify_password(password, user.password_hash):
+        default_user = ensure_single_user(db)
         return templates.TemplateResponse(
             request,
             "login.html",
-            _auth_ctx(request, error="Invalid username or password."),
+            _auth_ctx(
+                request,
+                error="Invalid username or password.",
+                show_default_login=uses_default_password(default_user),
+            ),
             status_code=400,
         )
     request.session["user_id"] = user.id

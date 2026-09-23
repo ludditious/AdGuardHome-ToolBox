@@ -1,15 +1,17 @@
-{% extends "base.html" %}
-{% block title %} — Login{% endblock %}
-{% block content %}
-<section class="card narrow">
-  <h1>Sign in</h1>
-  <p class="muted small">First sign-in after upgrade: <code>admin</code> / <code>password</code> — change under Settings → Account.</p>
-  {% if error %}<p class="notice notice-err">{{ error }}</p>{% endif %}
-  <form method="post" action="/login">
-    <label>Username<input type="text" name="username" required autocomplete="username"></label>
-    <label>Password<input type="password" name="password" required autocomplete="current-password"></label>
-    <button type="submit">Sign in</button>
-  </form>
-  <p class="muted"><a href="/recover">Forgot password?</a></p>
-</section>
-{% endblock %}
+{% extends "base.html" %}
+{% block title %} — Login{% endblock %}
+{% block content %}
+<section class="card narrow">
+  <h1>Sign in</h1>
+  {% if show_default_login %}
+  <p class="notice notice-warn small login-default-hint">The system is currently using default login: <strong>admin / password</strong> to change under navigate to Settings → Account</p>
+  {% endif %}
+  {% if error %}<p class="notice notice-err">{{ error }}</p>{% endif %}
+  <form method="post" action="/login">
+    <label>Username<input type="text" name="username" required autocomplete="username"></label>
+    <label>Password<input type="password" name="password" required autocomplete="current-password"></label>
+    <button type="submit">Sign in</button>
+  </form>
+  <p class="muted"><a href="/recover">Forgot password?</a></p>
+</section>
+{% endblock %}

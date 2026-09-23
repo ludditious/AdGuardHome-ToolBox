@@ -35,7 +35,7 @@ from .models import (
     User,
     utcnow,
 )
-from .security import hash_password
+from .security import hash_password, verify_password
 from .sync_bridge import run_user_sync
 
 
@@ -64,6 +64,12 @@ def ensure_single_user(db: Session) -> User:
             db.refresh(user)
     ensure_user_defaults(db, user)
     return user
+
+
+def uses_default_password(user: User | None) -> bool:
+    if not user or not user.password_hash:
+        return False
+    return verify_password(DEFAULT_PASSWORD, user.password_hash)
 
 
 def user_has_recovery(user: User) -> bool:
