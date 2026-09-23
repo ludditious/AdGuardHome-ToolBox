@@ -29,3 +29,8 @@ Invoke-RestMethod -Method Post `
 
 Write-Host "Publish started. Image: ghcr.io/ludditious/adguardhome-toolbox:latest"
 Write-Host "Actions: https://github.com/$repo/actions/workflows/docker-publish.yml"
+Write-Host ""
+Write-Host "If the job fails with write_package on a NEW repo, link the package to this repo:"
+Write-Host "  GitHub -> Your packages -> adguardhome-toolbox -> Package settings ->"
+Write-Host "  Manage Actions access -> add ludditious/AdGuardHome-ToolBox (Write)."
+Write-Host "Also: repo Settings -> Actions -> General -> Workflow permissions -> Read and write."
