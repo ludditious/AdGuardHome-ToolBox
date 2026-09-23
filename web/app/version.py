@@ -18,7 +18,7 @@
 from pathlib import Path
 
 APP_NAME = "AdGuard Home ToolBox"
-APP_REVISION = "2026-09-23h"
+APP_REVISION = "2026-09-23i"
 
 
 def read_bundled_version() -> str:
