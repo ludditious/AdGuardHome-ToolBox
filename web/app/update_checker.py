@@ -156,5 +156,16 @@ def apply_update_session(session: dict, status: UpdateStatus) -> None:
     session["update_check_error"] = status.error or ""
 
 
+def refresh_update_nav_session(session: dict) -> None:
+    """Reconcile session flag with version.txt inside this container (after docker pull)."""
+    remote = (session.get("update_remote_version") or "").strip()
+    if not remote:
+        return
+    inst = installed_version()
+    session["update_available"] = _remote_is_newer(inst, remote)
+    session["update_installed_version"] = inst
+
+
 def session_update_available(session: dict) -> bool:
+    refresh_update_nav_session(session)
     return bool(session.get("update_available"))
