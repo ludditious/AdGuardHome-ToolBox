@@ -1,139 +1,78 @@
-{% extends "base.html" %}
-
-
-
-{% block title %} — Settings{% endblock %}
-
-
-
-{% block content %}
-
-
-
-<h1>Settings</h1>
-
-
-
-{% if message %}<p class="{{ message_class or 'notice' }}">{{ message }}</p>{% endif %}
-
-
-
-
-
-<form method="post" action="/settings/account/password" class="card">
-
-
-
-  <p class="muted">Signed in as <strong>{{ current_username }}</strong></p>
-
-
-
-  <label>Current password<input type="password" name="current_password" required autocomplete="current-password"></label>
-
-
-
-  <label>New password (8+ characters)<input type="password" name="new_password" required minlength="8" autocomplete="new-password"></label>
-
-
-
-  <label>Confirm new password<input type="password" name="confirm_password" required minlength="8" autocomplete="new-password"></label>
-
-
-
-  <button type="submit">Update password</button>
-
-
-
-</form>
-
-
-
-
-
-<form method="post" action="/settings/account/recovery" class="card">
-
-
-
-  {% if recovery_configured %}
-
-
-
-  <p class="muted">Recovery is set. Submit new answers to replace them.</p>
-
-
-
-  {% else %}
-
-
-
-  <p class="notice notice-warn">Set recovery answers so Forgot password works on the login page.</p>
-
-
-
-  {% endif %}
-
-
-
-  <label>{{ security_questions[0] }}<input type="text" name="answer_1" required autocomplete="off"></label>
-
-
-
-  <label>{{ security_questions[1] }}<input type="text" name="answer_2" required autocomplete="off"></label>
-
-
-
-  <label>{{ security_questions[2] }}<input type="text" name="answer_3" required autocomplete="off"></label>
-
-
-
-  <button type="submit">Save recovery answers</button>
-
-
-
-</form>
-
-
-
-
-
-<section class="card">
-
-
-
-  <h2 class="footer-heading">Check for updates</h2>
-
-
-
-  <form method="post" action="/settings/updates">
-
-
-
-    <label class="check">
-
-      <input type="checkbox" name="check_updates_on_login" {% if check_updates_on_login %}checked{% endif %}>
-
-      Check for a new Docker image when I sign in
-
-    </label>
-
-
-
-    <p class="muted small">When enabled, the app contacts GitHub over the internet to read <code>version.txt</code> and compare it to this container. If the default path fails, it retries using <code>1.1.1.1</code> / <code>8.8.8.8</code>, then your source server IP as DNS. Disable if the server has no outbound access.</p>
-
-
-
-    <button type="submit">Save update preferences</button>
-
-
-
-  </form>
-
-
-
-</section>
-
-
-
-{% endblock %}
-
-
+{% extends "base.html" %}
+
+{% block title %} — Settings{% endblock %}
+
+{% block content %}
+
+<h1>Settings</h1>
+
+{% if message %}<p class="{{ message_class or 'notice' }}">{{ message }}</p>{% endif %}
+
+<form method="post" action="/settings/account/password" class="card">
+
+  <p class="muted">Signed in as <strong>{{ current_username }}</strong></p>
+
+  <label>Current password<input type="password" name="current_password" required autocomplete="current-password"></label>
+
+  <label>New password (8+ characters)<input type="password" name="new_password" required minlength="8" autocomplete="new-password"></label>
+
+  <label>Confirm new password<input type="password" name="confirm_password" required minlength="8" autocomplete="new-password"></label>
+
+  <button type="submit">Update password</button>
+
+</form>
+
+<form method="post" action="/settings/account/recovery" class="card">
+
+  <h2 class="footer-heading">Password recovery</h2>
+
+  <p class="muted small">These questions are shown on the login page under <strong>Forgot password</strong>. Answers are never displayed here—fill the fields below only when you want to set or change them.</p>
+
+  {% if not recovery_configured %}
+  <p class="notice notice-warn">Recovery is not set up yet. Answer all three questions and save.</p>
+  {% else %}
+  <p class="muted small">Recovery is active. Leave answers blank to keep your current ones.</p>
+  {% endif %}
+
+  <ol class="recovery-questions-list">
+    {% for q in security_questions %}
+    <li>{{ q }}</li>
+    {% endfor %}
+  </ol>
+
+  <label>{{ security_questions[0] }}
+    <input type="text" name="answer_1" {% if not recovery_configured %}required{% endif %} autocomplete="off" placeholder="{% if recovery_configured %}Leave blank to keep{% else %}Your answer{% endif %}">
+  </label>
+
+  <label>{{ security_questions[1] }}
+    <input type="text" name="answer_2" {% if not recovery_configured %}required{% endif %} autocomplete="off" placeholder="{% if recovery_configured %}Leave blank to keep{% else %}Your answer{% endif %}">
+  </label>
+
+  <label>{{ security_questions[2] }}
+    <input type="text" name="answer_3" {% if not recovery_configured %}required{% endif %} autocomplete="off" placeholder="{% if recovery_configured %}Leave blank to keep{% else %}Your answer{% endif %}">
+  </label>
+
+  <button type="submit">{% if recovery_configured %}Update recovery answers{% else %}Save recovery answers{% endif %}</button>
+
+</form>
+
+<section class="card">
+
+  <h2 class="footer-heading">Check for updates</h2>
+
+  <form method="post" action="/settings/updates">
+
+    <label class="check">
+      <input type="checkbox" name="check_updates_on_login" {% if check_updates_on_login %}checked{% endif %}>
+      Check for a new Docker image when I sign in
+    </label>
+
+    <p class="muted small">When enabled, the app contacts GitHub over the internet to read <code>version.txt</code> and compare it to this container. If the default path fails, it retries using <code>1.1.1.1</code> / <code>8.8.8.8</code>, then your source server IP as DNS. Disable if the server has no outbound access.</p>
+
+    <button type="submit">Save update preferences</button>
+
+  </form>
+
+</section>
+
+{% endblock %}

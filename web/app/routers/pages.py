@@ -178,11 +178,18 @@ def settings_set_recovery(
     answer_2: str = Form(""),
     answer_3: str = Form(""),
 ):
-    if not all((answer_1.strip(), answer_2.strip(), answer_3.strip())):
-        return RedirectResponse("/settings?account_err=1&msg=Answer%20all%20three%20questions", status_code=303)
-    user.recovery_answer_1_hash = hash_recovery_answer(answer_1)
-    user.recovery_answer_2_hash = hash_recovery_answer(answer_2)
-    user.recovery_answer_3_hash = hash_recovery_answer(answer_3)
+    a1, a2, a3 = answer_1.strip(), answer_2.strip(), answer_3.strip()
+    filled = (bool(a1), bool(a2), bool(a3))
+    if user_has_recovery(user) and not any(filled):
+        return RedirectResponse("/settings?account_ok=1&msg=Recovery%20answers%20unchanged", status_code=303)
+    if not all(filled):
+        return RedirectResponse(
+            "/settings?account_err=1&msg=Answer%20all%20three%20questions%20to%20set%20or%20change%20recovery",
+            status_code=303,
+        )
+    user.recovery_answer_1_hash = hash_recovery_answer(a1)
+    user.recovery_answer_2_hash = hash_recovery_answer(a2)
+    user.recovery_answer_3_hash = hash_recovery_answer(a3)
     db.commit()
     return RedirectResponse("/settings?account_ok=1&msg=Recovery%20answers%20saved", status_code=303)
 

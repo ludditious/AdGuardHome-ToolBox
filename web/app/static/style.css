@@ -191,6 +191,12 @@ input.port-field {
   margin-top: 0;
 }
 .host-port-field .muted.small { margin: 0.35rem 0 0; }
+ol.recovery-questions-list {
+  margin: 0.75rem 0 1rem;
+  padding-left: 1.25rem;
+  color: var(--text);
+}
+ol.recovery-questions-list li { margin-bottom: 0.35rem; }
 .check { display: flex; align-items: center; gap: 0.5rem; }
 button {
   background: var(--btn-bg);
