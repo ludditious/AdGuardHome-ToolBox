@@ -119,15 +119,107 @@ def sync_filtering_config(client: AdGuardClient, source: dict[str, Any], *, dry_
     return [msg]
 
 
+_DNS_SYNC_SKIP = frozenset(
+    {
+        "default_local_ptr_upstreams",
+        "dns_port",
+        "http_port",
+        "dhcp_available",
+        "running",
+        "version",
+        "language",
+        "start_time",
+    }
+)
+
+_DNS_UPSTREAM_LIST_KEYS = (
+    "bootstrap_dns",
+    "upstream_dns",
+    "fallback_dns",
+    "local_ptr_upstreams",
+    "private_upstream",
+)
+
+
+def _dns_upstream_lines(items: Any) -> list[str]:
+    if not isinstance(items, list):
+        return []
+    out: list[str] = []
+    for line in items:
+        s = str(line).strip()
+        if not s or s.startswith("#"):
+            continue
+        out.append(s)
+    return out
+
+
+def _is_domain_specific_upstream(line: str) -> bool:
+    return line.startswith("[/") and "]" in line
+
+
+def _split_domain_specific_upstreams(lines: list[str]) -> tuple[list[str], list[str]]:
+    plain: list[str] = []
+    domain_specific: list[str] = []
+    for line in lines:
+        if _is_domain_specific_upstream(line):
+            domain_specific.append(line)
+        else:
+            plain.append(line)
+    return plain, domain_specific
+
+
+def _plain_upstreams(lines: list[str]) -> list[str]:
+    return [x for x in lines if not _is_domain_specific_upstream(x)]
+
+
+def _prepare_dns_sync_payload(dns_info: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
+    """Make /dns_info from the source safe to POST on Docker/cloud targets."""
+    notes: list[str] = []
+    payload = {k: v for k, v in dns_info.items() if k not in _DNS_SYNC_SKIP}
+    payload.pop("dhcp", None)
+
+    if payload.get("upstream_mode") == "":
+        payload["upstream_mode"] = "load_balance"
+
+    for key in _DNS_UPSTREAM_LIST_KEYS:
+        if key in payload:
+            payload[key] = _dns_upstream_lines(payload.get(key))
+
+    private = payload.pop("private_upstream", None)
+    if private:
+        local = payload.get("local_ptr_upstreams") or []
+        payload["local_ptr_upstreams"] = list(dict.fromkeys([*local, *private]))
+
+    upstream = payload.get("upstream_dns") or []
+    up_plain, up_domain = _split_domain_specific_upstreams(upstream)
+    if up_domain:
+        local = payload.get("local_ptr_upstreams") or []
+        payload["local_ptr_upstreams"] = list(dict.fromkeys([*local, *up_domain]))
+        notes.append("DNS: moved domain-specific upstream lines out of main upstream list")
+    payload["upstream_dns"] = up_plain
+
+    local_ptr = payload.get("local_ptr_upstreams") or []
+    if bool(payload.get("use_private_ptr_resolvers")):
+        if not _plain_upstreams(local_ptr):
+            payload["use_private_ptr_resolvers"] = False
+            payload["local_ptr_upstreams"] = []
+            notes.append(
+                "DNS: disabled private reverse DNS resolvers (no plain private upstreams for this target)"
+            )
+    elif local_ptr and not _plain_upstreams(local_ptr):
+        payload["local_ptr_upstreams"] = []
+
+    return payload, notes
+
+
 def sync_dns(client: AdGuardClient, dns_info: dict[str, Any], *, dry_run: bool) -> list[str]:
-    # Omit read-only / environment-specific fields if present
-    skip = {"default_local_ptr_upstreams"}
-    payload = {k: v for k, v in dns_info.items() if k not in skip}
-    msg = "apply DNS configuration"
+    payload, notes = _prepare_dns_sync_payload(dns_info)
+    log = list(notes)
+    log.append("apply DNS configuration")
     if dry_run:
-        return [msg]
+        return log
     client.post("/dns_config", payload)
-    return [msg]
+    return log
 
 
 def sync_rewrites(client: AdGuardClient, rewrites: list[dict[str, Any]], *, dry_run: bool) -> list[str]:
@@ -147,10 +239,21 @@ def sync_rewrites(client: AdGuardClient, rewrites: list[dict[str, Any]], *, dry_
     return log
 
 
+def _client_list_from_snapshot(clients_payload: Any) -> list[dict[str, Any]] | None:
+    if isinstance(clients_payload, list):
+        return clients_payload
+    if isinstance(clients_payload, dict):
+        for key in ("clients", "persistent_clients"):
+            val = clients_payload.get(key)
+            if isinstance(val, list):
+                return val
+    return None
+
+
 def sync_clients(client: AdGuardClient, clients_payload: dict[str, Any], *, dry_run: bool) -> list[str]:
     log: list[str] = []
-    src_clients = clients_payload.get("clients") if isinstance(clients_payload, dict) else clients_payload
-    if not isinstance(src_clients, list):
+    src_clients = _client_list_from_snapshot(clients_payload)
+    if src_clients is None:
         return ["skip clients (unexpected format)"]
 
     current = client.get("/clients") or {}

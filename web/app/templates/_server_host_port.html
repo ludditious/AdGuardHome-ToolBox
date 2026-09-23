@@ -1,0 +1,37 @@
+{# Expects host_ip, admin_port, host_ip_name, port_name #}
+<div class="host-port-field">
+  <span class="host-port-label">Server address</span>
+  <div class="host-port-row">
+    <label class="host-port-ip">
+      <span class="sr-only">IPv4 address</span>
+      <input
+        type="text"
+        name="{{ host_ip_name }}"
+        value="{{ host_ip }}"
+        class="ip-octets"
+        inputmode="decimal"
+        autocomplete="off"
+        placeholder="192.168.0.10"
+        pattern="^\d{1,3}(\.\d{1,3}){3}$"
+        maxlength="15"
+        required
+        title="IPv4 address, for example 192.168.0.10"
+      >
+    </label>
+    <label class="host-port-port">
+      <span class="sr-only">Port</span>
+      <input
+        type="number"
+        name="{{ port_name }}"
+        value="{{ admin_port }}"
+        class="port-field"
+        min="1"
+        max="65535"
+        step="1"
+        required
+        title="Admin UI port, usually 3000"
+      >
+    </label>
+  </div>
+  <p class="muted small">Connections use <code>http://</code> to this IP and port (AdGuard Home admin UI, not DNS port 53).</p>
+</div>

@@ -1,52 +1,41 @@
-{% extends "base.html" %}
-
-{% block content %}
-
-<h1>Source server</h1>
-
-{% if message %}<p class="{{ message_class or 'notice' }}">{{ message }}</p>{% endif %}
-
-<form method="post" action="/source">
-
-  <label class="check"><input type="checkbox" name="enabled" {% if source.enabled %}checked{% endif %}> Enabled</label>
-
-  <label>URL
-
-    <input type="text" name="url" value="{{ form_url or source.url }}" placeholder="https://adguard.example.com" required autocomplete="url">
-
-  </label>
-
-  <label>Username<input type="text" name="username" value="{{ form_username or source.username }}" autocomplete="username"></label>
-
-  <label>Password
-
-    <div class="password-row">
-
-      <input class="pw-field" type="password" name="password" value="{{ password_plain }}" autocomplete="current-password">
-
-      <button type="button" class="pw-toggle">Show</button>
-
-    </div>
-
-  </label>
-
-  <label>Connect using IP <span class="muted small">(optional — skip DNS for this host; URL hostname kept for HTTPS)</span>
-
-    <input type="text" name="connect_ip" value="{{ form_connect_ip or source.connect_ip }}" placeholder="192.168.0.10">
-
-  </label>
-
-  <div class="row-actions">
-
-    <button type="submit">Save</button>
-
-    <button type="submit" formaction="/source/test" formmethod="post">Test connection</button>
-
-  </div>
-
-  <p class="muted small">Hostnames use the container/host system DNS. Optional: Connect using IP above to skip DNS for this source.</p>
-
-</form>
-
-{% endblock %}
-
+{% extends "base.html" %}
+
+{% block content %}
+
+<h1>Source server</h1>
+
+{% if message %}<p class="{{ message_class or 'notice' }}">{{ message }}</p>{% endif %}
+
+<form method="post" action="/source">
+
+  <label class="check"><input type="checkbox" name="enabled" {% if source.enabled %}checked{% endif %}> Enabled</label>
+
+  {% set host_ip_name = "host_ip" %}
+  {% set port_name = "admin_port" %}
+  {% include "_server_host_port.html" %}
+
+  <label>Username<input type="text" name="username" value="{{ form_username or source.username }}" autocomplete="username"></label>
+
+  <label>Password
+
+    <div class="password-row">
+
+      <input class="pw-field" type="password" name="password" value="{{ password_plain }}" autocomplete="current-password">
+
+      <button type="button" class="pw-toggle">Show</button>
+
+    </div>
+
+  </label>
+
+  <div class="row-actions">
+
+    <button type="submit">Save</button>
+
+    <button type="submit" formaction="/source/test" formmethod="post">Test connection</button>
+
+  </div>
+
+</form>
+
+{% endblock %}

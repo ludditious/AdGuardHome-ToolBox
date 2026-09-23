@@ -20,8 +20,11 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 from pathlib import Path
+from urllib.parse import urlparse
 
 import requests
+
+from agsync.dns_resolve import DEFAULT_PUBLIC_DNS, resolve_hostname
 
 DOCKER_PULL_IMAGE = "ghcr.io/ludditious/adguardhome-toolbox:latest"
 DEFAULT_RAW_BASE = "https://raw.githubusercontent.com/ludditious/AdGuardHome-ToolBox/main"
@@ -76,13 +79,54 @@ def _fetch_text(url: str) -> str:
     return resp.text.strip()
 
 
-def check_for_update() -> UpdateStatus:
+def _fetch_text_via_resolved_ip(url: str, *, dns_servers: list[str]) -> str:
+    parsed = urlparse(url)
+    host = parsed.hostname
+    if not host:
+        raise requests.RequestException(f"Invalid URL {url!r}")
+    ip = resolve_hostname(host, dns_servers=dns_servers)
+    port = parsed.port or (443 if parsed.scheme == "https" else 80)
+    path = parsed.path or "/"
+    if parsed.query:
+        path = f"{path}?{parsed.query}"
+    direct = f"{parsed.scheme}://{ip}:{port}{path}"
+    resp = requests.get(
+        direct,
+        timeout=FETCH_TIMEOUT,
+        headers={
+            "User-Agent": "AdGuardHome-ToolBox-UpdateCheck/1.0",
+            "Host": host,
+        },
+    )
+    resp.raise_for_status()
+    return resp.text.strip()
+
+
+def _fetch_text_resilient(url: str, *, source_ip: str | None) -> str:
+    try:
+        return _fetch_text(url)
+    except requests.RequestException:
+        pass
+    groups: list[list[str]] = [list(DEFAULT_PUBLIC_DNS)]
+    src = (source_ip or "").strip()
+    if src:
+        groups.append([src])
+    last_exc: Exception | None = None
+    for nameservers in groups:
+        try:
+            return _fetch_text_via_resolved_ip(url, dns_servers=nameservers)
+        except (requests.RequestException, OSError) as exc:
+            last_exc = exc
+    raise requests.RequestException(str(last_exc) if last_exc else "Update check request failed")
+
+
+def check_for_update(*, source_ip: str | None = None) -> UpdateStatus:
     inst = installed_version()
     base = _raw_base()
     pull = f"docker pull {DOCKER_PULL_IMAGE}"
     try:
-        remote_ver = _fetch_text(f"{base}/version.txt")
-        notes = _fetch_text(f"{base}/current-release.txt")
+        remote_ver = _fetch_text_resilient(f"{base}/version.txt", source_ip=source_ip)
+        notes = _fetch_text_resilient(f"{base}/current-release.txt", source_ip=source_ip)
     except requests.RequestException as exc:
         return UpdateStatus(
             installed_version=inst,

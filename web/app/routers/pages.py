@@ -58,7 +58,8 @@ from ..services import (
     save_target,
     user_has_recovery,
 )
-from ..sync_bridge import plain_password, test_server, user_dns_servers
+from ..server_address import DEFAULT_ADMIN_PORT, normalize_endpoint, parse_server_url
+from ..sync_bridge import plain_password, source_host_ip, test_server, user_dns_servers
 
 router = APIRouter()
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent.parent / "templates"))
@@ -144,7 +145,6 @@ def settings_page(
             security_questions=SECURITY_QUESTIONS,
             recovery_configured=user_has_recovery(user),
             check_updates_on_login=user.check_updates_on_login,
-            dns_servers=user.sync_options.dns_servers if user.sync_options else "",
         ),
     )
 
@@ -187,19 +187,6 @@ def settings_set_recovery(
     return RedirectResponse("/settings?account_ok=1&msg=Recovery%20answers%20saved", status_code=303)
 
 
-@router.post("/settings/dns")
-def settings_dns(
-    user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-    dns_servers: str = Form(""),
-):
-    ensure_user_defaults(db, user)
-    assert user.sync_options is not None
-    user.sync_options.dns_servers = dns_servers.strip()
-    db.commit()
-    return RedirectResponse("/settings?account_ok=1&msg=DNS%20settings%20saved", status_code=303)
-
-
 @router.post("/settings/updates")
 def settings_updates(
     user: User = Depends(get_current_user),
@@ -226,7 +213,7 @@ def update_page(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    status = check_for_update()
+    status = check_for_update(source_ip=source_host_ip(user))
     apply_update_session(request.session, status)
     return templates.TemplateResponse(
         request,
@@ -269,15 +256,20 @@ def source_page(
     db: Session = Depends(get_db),
     saved: str | None = None,
     pw: str | None = None,
+    err: str | None = None,
 ):
     ensure_user_defaults(db, user)
     src = user.source
     message = None
     message_class = "notice"
-    if saved:
+    if err:
+        message = err
+        message_class = "notice notice-err"
+    elif saved:
         message = _save_password_hint(pw or "kept")
         message_class = "notice notice-ok" if pw != "missing" else "notice notice-warn"
     pw_plain = plain_password(src.password_enc) if src else ""
+    host_ip, admin_port = parse_server_url(src.url if src else "")
     return templates.TemplateResponse(
         request,
         "source.html",
@@ -290,6 +282,8 @@ def source_page(
             password_plain=pw_plain,
             message=message,
             message_class=message_class,
+            host_ip=host_ip,
+            admin_port=admin_port,
         ),
     )
 
@@ -298,17 +292,17 @@ def source_page(
 def source_save(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-    url: str = Form(""),
+    host_ip: str = Form(""),
+    admin_port: str = Form(""),
     username: str = Form("admin"),
     password: str = Form(""),
     enabled: str | None = Form(None),
-    connect_ip: str = Form(""),
 ):
+    url, err = normalize_endpoint(host_ip, admin_port or DEFAULT_ADMIN_PORT)
+    if err:
+        return RedirectResponse(f"/source?err={quote(err)}", status_code=303)
     sk = get_settings().secret_key
-    pw_status = save_source(
-        db, user, url, username, password, enabled == "on", sk,
-        connect_ip=connect_ip,
-    )
+    pw_status = save_source(db, user, url, username, password, enabled == "on", sk)
     return RedirectResponse(f"/source?saved=1&pw={quote(pw_status)}", status_code=303)
 
 
@@ -317,29 +311,33 @@ def source_test(
     request: Request,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-    url: str = Form(""),
+    host_ip: str = Form(""),
+    admin_port: str = Form(""),
     username: str = Form("admin"),
     password: str = Form(""),
-    connect_ip: str = Form(""),
 ):
     ensure_user_defaults(db, user)
     src = user.source
     verify = user.sync_options.verify_tls if user.sync_options else False
-    test_url = url.strip()
+    test_url, err = normalize_endpoint(host_ip, admin_port or DEFAULT_ADMIN_PORT)
     test_user = username.strip() or "admin"
     enc = src.password_enc if src else ""
-    ip = connect_ip.strip() or (src.connect_ip if src else "")
-    res = test_server(
-        test_url,
-        test_user,
-        enc,
-        form_password=password,
-        verify_tls=verify,
-        connect_ip=ip,
-        dns_servers=user_dns_servers(user),
-    )
+    if err:
+        from agsync.engine import TestResult
+
+        res = TestResult(False, "Invalid address", err)
+    else:
+        res = test_server(
+            test_url,
+            test_user,
+            enc,
+            form_password=password,
+            verify_tls=verify,
+            dns_servers=user_dns_servers(user),
+        )
     message_class, message = _format_test_message(res)
     pw_display = password if password else plain_password(enc)
+    ip, port = parse_server_url(test_url) if test_url else (host_ip.strip(), admin_port or DEFAULT_ADMIN_PORT)
     return templates.TemplateResponse(
         request,
         "source.html",
@@ -352,9 +350,9 @@ def source_test(
             password_plain=pw_display,
             message=message,
             message_class=message_class,
-            form_url=test_url,
+            host_ip=ip,
+            admin_port=port,
             form_username=test_user,
-            form_connect_ip=ip,
         ),
     )
 
@@ -367,14 +365,19 @@ def targets_page(
     test_id: int | None = None,
     test_ok: str | None = None,
     test_msg: str | None = None,
+    err: str | None = None,
 ):
     ensure_user_defaults(db, user)
+    list_error = err
     test_message = None
     test_message_class = "notice"
     if test_id is not None and test_msg:
         test_message = test_msg
         test_message_class = "notice notice-ok" if test_ok == "1" else "notice notice-err"
     target_pw = {t.id: plain_password(t.password_enc) for t in user.targets}
+    target_endpoints = {
+        t.id: parse_server_url(t.url) for t in user.targets
+    }
     return templates.TemplateResponse(
         request,
         "targets.html",
@@ -384,9 +387,12 @@ def targets_page(
             db,
             targets=user.targets,
             target_pw=target_pw,
+            target_endpoints=target_endpoints,
             test_target_id=test_id,
             test_message=test_message,
             test_message_class=test_message_class,
+            default_admin_port=DEFAULT_ADMIN_PORT,
+            list_error=list_error,
         ),
     )
 
@@ -396,11 +402,15 @@ def target_add(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
     name: str = Form(""),
-    url: str = Form(...),
+    host_ip: str = Form(""),
+    admin_port: str = Form(""),
     username: str = Form("admin"),
     password: str = Form(""),
     enabled: str | None = Form(None),
 ):
+    url, err = normalize_endpoint(host_ip, admin_port or DEFAULT_ADMIN_PORT)
+    if err:
+        return RedirectResponse(f"/targets?err={quote(err)}", status_code=303)
     sk = get_settings().secret_key
     save_target(
         db, user, target_id=None, name=name, url=url, username=username,
@@ -415,11 +425,15 @@ def target_edit(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
     name: str = Form(""),
-    url: str = Form(...),
+    host_ip: str = Form(""),
+    admin_port: str = Form(""),
     username: str = Form("admin"),
     password: str = Form(""),
     enabled: str | None = Form(None),
 ):
+    url, err = normalize_endpoint(host_ip, admin_port or DEFAULT_ADMIN_PORT)
+    if err:
+        return RedirectResponse(f"/targets?err={quote(err)}", status_code=303)
     sk = get_settings().secret_key
     save_target(
         db, user, target_id=target_id, name=name, url=url, username=username,
@@ -434,26 +448,30 @@ def target_test(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
     name: str = Form(""),
-    url: str = Form(""),
+    host_ip: str = Form(""),
+    admin_port: str = Form(""),
     username: str = Form("admin"),
     password: str = Form(""),
 ):
     ensure_user_defaults(db, user)
     tgt = next((t for t in user.targets if t.id == target_id), None)
     verify = user.sync_options.verify_tls if user.sync_options else False
-    test_url = url.strip()
+    test_url, err = normalize_endpoint(host_ip, admin_port or DEFAULT_ADMIN_PORT)
     test_user = username.strip() or "admin"
     enc = tgt.password_enc if tgt else ""
-    connect_ip = (tgt.connect_ip if tgt else "") or ""
-    res = test_server(
-        test_url,
-        test_user,
-        enc,
-        form_password=password,
-        verify_tls=verify,
-        connect_ip=connect_ip,
-        dns_servers=user_dns_servers(user),
-    )
+    if err:
+        from agsync.engine import TestResult
+
+        res = TestResult(False, "Invalid address", err)
+    else:
+        res = test_server(
+            test_url,
+            test_user,
+            enc,
+            form_password=password,
+            verify_tls=verify,
+            dns_servers=user_dns_servers(user),
+        )
     ok = "1" if res.ok else "0"
     detail = f"{res.title}: {res.message}" if not res.ok else f"{res.title} — {res.message.replace(chr(10), ' ')}"
     return RedirectResponse(

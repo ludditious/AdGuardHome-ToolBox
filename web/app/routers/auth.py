@@ -32,7 +32,8 @@ from ..security import (
     verify_password,
     verify_recovery_answer,
 )
-from ..services import user_has_recovery
+from ..services import ensure_user_defaults, user_has_recovery
+from ..sync_bridge import source_host_ip
 from ..update_checker import apply_update_session, check_for_update
 
 router = APIRouter()
@@ -75,7 +76,8 @@ def login_submit(
         )
     request.session["user_id"] = user.id
     if user.check_updates_on_login:
-        apply_update_session(request.session, check_for_update())
+        ensure_user_defaults(db, user)
+        apply_update_session(request.session, check_for_update(source_ip=source_host_ip(user)))
     else:
         request.session["update_available"] = False
     return RedirectResponse("/dashboard", status_code=303)

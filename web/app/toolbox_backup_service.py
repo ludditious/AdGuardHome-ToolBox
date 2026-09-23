@@ -28,12 +28,14 @@ from sqlalchemy.orm import Session
 from .config import clear_settings_cache, get_settings
 from .crypto import decrypt
 from .models import TargetServer, ToolBoxBackup, User
+from .server_address import DEFAULT_ADMIN_PORT, build_http_url, normalize_endpoint, parse_server_url
 from .services import ensure_user_defaults
 
 SECRETS_FILE = Path("/data/app-secrets.env")
 
 CONFIG_FORMAT = "adguardhome-toolbox-config"
-CONFIG_VERSION = 1
+CONFIG_VERSION = 2
+SUPPORTED_CONFIG_VERSIONS = frozenset({1, 2})
 
 
 def toolbox_backup_display_name(when: datetime | None = None) -> str:
@@ -45,6 +47,17 @@ def _row_dict(obj: Any, *, fields: tuple[str, ...]) -> dict[str, Any]:
     return {f: getattr(obj, f) for f in fields}
 
 
+def _server_row_export(url: str, row: dict[str, Any]) -> dict[str, Any]:
+    host_ip, admin_port = parse_server_url(url)
+    row["host_ip"] = host_ip
+    row["admin_port"] = admin_port
+    if host_ip:
+        row["url"] = build_http_url(host_ip, admin_port)
+    row["connect_ip"] = ""
+    row["dns_servers"] = ""
+    return row
+
+
 def build_toolbox_config_document(db: Session, user: User) -> dict[str, Any]:
     ensure_user_defaults(db, user)
     src = user.source
@@ -52,15 +65,16 @@ def build_toolbox_config_document(db: Session, user: User) -> dict[str, Any]:
     sched = user.schedule
     assert src is not None and opts is not None and sched is not None
     targets = sorted(user.targets, key=lambda t: (t.sort_order, t.id))
-    return {
-        "format": CONFIG_FORMAT,
-        "format_version": CONFIG_VERSION,
-        "check_updates_on_login": bool(user.check_updates_on_login),
-        "source": _row_dict(
+    source_row = _server_row_export(
+        src.url,
+        _row_dict(
             src,
             fields=("url", "username", "password_enc", "enabled", "dns_servers", "connect_ip"),
         ),
-        "targets": [
+    )
+    target_rows = [
+        _server_row_export(
+            t.url,
             _row_dict(
                 t,
                 fields=(
@@ -73,25 +87,34 @@ def build_toolbox_config_document(db: Session, user: User) -> dict[str, Any]:
                     "dns_servers",
                     "connect_ip",
                 ),
-            )
-            for t in targets
-        ],
-        "sync_options": _row_dict(
-            opts,
-            fields=(
-                "verify_tls",
-                "sync_dns",
-                "sync_filter_lists",
-                "sync_custom_rules",
-                "sync_rewrites",
-                "sync_clients",
-                "sync_blocked_services",
-                "sync_parental_safebrowsing_safesearch",
-                "refresh_lists_after_sync",
-                "dry_run",
-                "dns_servers",
             ),
+        )
+        for t in targets
+    ]
+    sync_row = _row_dict(
+        opts,
+        fields=(
+            "verify_tls",
+            "sync_dns",
+            "sync_filter_lists",
+            "sync_custom_rules",
+            "sync_rewrites",
+            "sync_clients",
+            "sync_blocked_services",
+            "sync_parental_safebrowsing_safesearch",
+            "refresh_lists_after_sync",
+            "dry_run",
+            "dns_servers",
         ),
+    )
+    sync_row["dns_servers"] = ""
+    return {
+        "format": CONFIG_FORMAT,
+        "format_version": CONFIG_VERSION,
+        "check_updates_on_login": bool(user.check_updates_on_login),
+        "source": source_row,
+        "targets": target_rows,
+        "sync_options": sync_row,
         "schedule": _row_dict(
             sched,
             fields=("enabled", "interval_minutes", "days_json"),
@@ -148,8 +171,9 @@ def parse_toolbox_config_json(text: str) -> dict[str, Any]:
         raise ValueError("Backup must be a JSON object.")
     if data.get("format") != CONFIG_FORMAT:
         raise ValueError(f"Invalid ToolBox backup format (expected {CONFIG_FORMAT!r}).")
-    if data.get("format_version") != CONFIG_VERSION:
-        raise ValueError(f"Unsupported ToolBox backup version {data.get('format_version')!r}.")
+    version = data.get("format_version")
+    if version not in SUPPORTED_CONFIG_VERSIONS:
+        raise ValueError(f"Unsupported ToolBox backup version {version!r}.")
     for key in ("source", "sync_options", "schedule", "targets"):
         if key not in data:
             raise ValueError(f"ToolBox backup is missing {key!r}.")
@@ -164,6 +188,23 @@ def _apply_fields(obj: Any, payload: dict[str, Any], fields: tuple[str, ...]) ->
             setattr(obj, f, payload[f])
 
 
+def _normalize_server_payload(payload: dict[str, Any]) -> None:
+    host_ip = (payload.get("host_ip") or "").strip()
+    admin_port = payload.get("admin_port", DEFAULT_ADMIN_PORT)
+    if host_ip:
+        url, err = normalize_endpoint(host_ip, admin_port)
+        if not err:
+            payload["url"] = url
+    elif payload.get("url"):
+        ip, port = parse_server_url(str(payload["url"]))
+        if ip:
+            payload["url"] = build_http_url(ip, port)
+            payload["host_ip"] = ip
+            payload["admin_port"] = port
+    payload["connect_ip"] = ""
+    payload["dns_servers"] = ""
+
+
 def apply_toolbox_config(db: Session, user: User, doc: dict[str, Any]) -> None:
     ensure_user_defaults(db, user)
     secrets_restored = _restore_container_secrets(doc.get("container_secrets") or {})
@@ -173,14 +214,18 @@ def apply_toolbox_config(db: Session, user: User, doc: dict[str, Any]) -> None:
     sched = user.schedule
     assert src is not None and opts is not None and sched is not None
 
+    source_payload = dict(doc["source"])
+    _normalize_server_payload(source_payload)
     _apply_fields(
         src,
-        doc["source"],
+        source_payload,
         ("url", "username", "password_enc", "enabled", "dns_servers", "connect_ip"),
     )
+    sync_payload = dict(doc["sync_options"])
+    sync_payload["dns_servers"] = ""
     _apply_fields(
         opts,
-        doc["sync_options"],
+        sync_payload,
         (
             "verify_tls",
             "sync_dns",
@@ -218,8 +263,10 @@ def apply_toolbox_config(db: Session, user: User, doc: dict[str, Any]) -> None:
     for i, row in enumerate(doc["targets"]):
         if not isinstance(row, dict):
             continue
+        target_payload = dict(row)
+        _normalize_server_payload(target_payload)
         tgt = TargetServer(user_id=user.id, sort_order=i)
-        _apply_fields(tgt, row, target_fields)
+        _apply_fields(tgt, target_payload, target_fields)
         if "sort_order" not in row:
             tgt.sort_order = i
         db.add(tgt)

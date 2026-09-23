@@ -21,12 +21,13 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from agsync.dns_resolve import parse_dns_server_list
+from agsync.dns_resolve import DEFAULT_PUBLIC_DNS
 from agsync.engine import run_sync, test_connection
 
 from .config import get_settings
 from .crypto import decrypt
 from .models import SourceServer, SyncOptions, TargetServer, User
+from .server_address import parse_server_url
 
 
 def _secret() -> str:
@@ -79,12 +80,21 @@ def options_dict(opt: SyncOptions | None) -> dict[str, Any]:
     }
 
 
-def user_dns_servers(user: User) -> list[str] | None:
-    opt = user.sync_options
-    if not opt:
-        return None
-    servers = parse_dns_server_list(opt.dns_servers)
-    return servers or None
+def source_host_ip(user: User) -> str:
+    src = user.source
+    if not src or not src.url:
+        return ""
+    ip, _ = parse_server_url(src.url)
+    return ip
+
+
+def user_dns_servers(user: User) -> list[str]:
+    """Public resolvers first, then source IP when hostname resolution is still needed."""
+    servers = list(DEFAULT_PUBLIC_DNS)
+    src_ip = source_host_ip(user)
+    if src_ip and src_ip not in servers:
+        servers.append(src_ip)
+    return servers
 
 
 def build_sync_config(db: Session, user: User) -> dict[str, Any]:
@@ -100,13 +110,13 @@ def build_sync_config(db: Session, user: User) -> dict[str, Any]:
         raise ValueError(err or "Source password missing.")
 
     sk = _secret()
-    dns = user.sync_options.dns_servers if user.sync_options else ""
+    dns = user_dns_servers(user)
     return {
         "source": {
             "url": src.url,
             "username": src.username,
             "password": pw,
-            "connect_ip": src.connect_ip or "",
+            "connect_ip": "",
             "dns_servers": dns,
         },
         "targets": [
@@ -115,7 +125,7 @@ def build_sync_config(db: Session, user: User) -> dict[str, Any]:
                 "url": t.url,
                 "username": t.username,
                 "password": decrypt(sk, t.password_enc) if t.password_enc else "",
-                "connect_ip": t.connect_ip or "",
+                "connect_ip": "",
                 "dns_servers": dns,
             }
             for t in targets

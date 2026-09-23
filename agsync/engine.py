@@ -26,7 +26,7 @@ from typing import Any
 
 
 from .client import AdGuardClient, AdGuardError
-from .dns_resolve import parse_dns_server_list
+from .dns_resolve import DEFAULT_PUBLIC_DNS, parse_dns_server_list
 
 from .sync import apply_snapshot
 
@@ -37,11 +37,11 @@ from .sync import apply_snapshot
 def _dns_list(entry: dict[str, Any]) -> list[str] | None:
     raw = entry.get("dns_servers")
     if raw is None:
-        return None
+        return list(DEFAULT_PUBLIC_DNS)
     if isinstance(raw, list):
-        return raw or None
+        return raw or list(DEFAULT_PUBLIC_DNS)
     servers = parse_dns_server_list(str(raw))
-    return servers or None
+    return servers or list(DEFAULT_PUBLIC_DNS)
 
 
 def run_sync(

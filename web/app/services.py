@@ -146,8 +146,6 @@ def save_source(
     password: str,
     enabled: bool,
     sk: str,
-    *,
-    connect_ip: str = "",
 ) -> str:
     """Returns password save status: updated, kept, or missing."""
     ensure_user_defaults(db, user)
@@ -162,7 +160,7 @@ def save_source(
     elif not src.password_enc:
         pw_status = "missing"
     src.enabled = enabled
-    src.connect_ip = connect_ip.strip()
+    src.connect_ip = ""
     src.dns_servers = ""
     db.commit()
     return pw_status
@@ -179,7 +177,6 @@ def save_target(
     password: str,
     enabled: bool,
     sk: str,
-    connect_ip: str = "",
 ) -> TargetServer:
     if target_id:
         tgt = db.get(TargetServer, target_id)
@@ -194,7 +191,7 @@ def save_target(
     if password:
         tgt.password_enc = encrypt(sk, password)
     tgt.enabled = enabled
-    tgt.connect_ip = connect_ip.strip()
+    tgt.connect_ip = ""
     tgt.dns_servers = ""
     db.commit()
     db.refresh(tgt)

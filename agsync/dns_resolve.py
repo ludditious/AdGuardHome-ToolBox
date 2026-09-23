@@ -21,6 +21,8 @@ import ipaddress
 import os
 import socket
 
+DEFAULT_PUBLIC_DNS: list[str] = ["1.1.1.1", "8.8.8.8"]
+
 # (host, connect_ip) -> ip
 _resolved_hosts: dict[tuple[str, str], str] = {}
 _patched = False
@@ -76,7 +78,9 @@ def _nameservers_from_resolv_conf() -> list[str]:
 def _resolver_groups(*, dns_servers: list[str] | None = None) -> list[tuple[str, list[str]]]:
     labeled: list[tuple[str, list[str]]] = []
     if dns_servers:
-        labeled.append(("Settings DNS servers", dns_servers))
+        labeled.append(("ToolBox DNS servers", dns_servers))
+    else:
+        labeled.append(("default public DNS", list(DEFAULT_PUBLIC_DNS)))
     labeled.extend(_system_resolver_groups())
     return labeled
 
