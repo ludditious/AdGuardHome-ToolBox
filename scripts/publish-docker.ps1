@@ -27,10 +27,7 @@ Invoke-RestMethod -Method Post `
     -Body $body `
     -ContentType "application/json"
 
-Write-Host "Publish started. Image: ghcr.io/ludditious/adguardhome-toolbox:latest"
+Write-Host "Publish started. Image: ghcr.io/ludditious/adguard-home-toolbox:latest"
 Write-Host "Actions: https://github.com/$repo/actions/workflows/docker-publish.yml"
 Write-Host ""
-Write-Host "Package page (link ONLY the new repo, not AdGuardHome-ToolBox-old):"
-Write-Host "  https://github.com/ludditious/AdGuardHome-ToolBox/pkgs/container/adguardhome-toolbox"
-Write-Host "  Package settings -> Connect repository -> ludditious/AdGuardHome-ToolBox"
-Write-Host "  Remove AdGuardHome-ToolBox-old from Manage Actions access if the Packages tab stays empty."
+Write-Host "Package page (new repo): https://github.com/ludditious/AdGuardHome-ToolBox/pkgs/container/adguard-home-toolbox"

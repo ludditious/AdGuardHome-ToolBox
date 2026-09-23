@@ -26,9 +26,9 @@
   <p class="muted small">Run on the Docker host. Edit the commands to match your container name, ports, volume, and environment.</p>
   <p class="notice notice-warn small">Example only — adjust <code>--name</code>, <code>-p</code>, <code>-v</code>, and any <code>-e</code> flags to match your current install.</p>
   <div class="cmd-copy-block">
-    <textarea readonly class="cmd-box" id="upgrade-cmd" rows="4">docker pull ghcr.io/ludditious/adguardhome-toolbox:latest
+    <textarea readonly class="cmd-box" id="upgrade-cmd" rows="4">docker pull ghcr.io/ludditious/adguard-home-toolbox:latest
 docker rm -f adguardhome-toolbox
-docker run -d --name adguardhome-toolbox -p 81:8080 -v adguardhome-toolbox:/data --restart unless-stopped ghcr.io/ludditious/adguardhome-toolbox:latest</textarea>
+docker run -d --name adguardhome-toolbox -p 81:8080 -v adguardhome-toolbox:/data --restart unless-stopped ghcr.io/ludditious/adguard-home-toolbox:latest</textarea>
     <button type="button" class="copy-cmd" data-target="upgrade-cmd">Copy</button>
   </div>
 </div>

@@ -6,7 +6,7 @@ Multi-user web UI to sync one **source** AdGuard Home instance to many **targets
 
 ## Publish the image on GitHub (one-time setup)
 
-GitHub repo: **ludditious/AdGuardHome-ToolBox** (source + CI). GHCR package **`AdGuardHome-ToolBox`** (`ghcr.io/ludditious/adguardhome-toolbox`).
+GitHub repo: **ludditious/AdGuardHome-ToolBox** (source + CI). GHCR package **`AdGuardHome-ToolBox`** (`ghcr.io/ludditious/adguard-home-toolbox`).
 
 **`.github/workflows/docker-publish.yml`** builds and pushes that image on push to **`main`** or tag **`v*`**.
 
@@ -17,7 +17,7 @@ GitHub repo: **ludditious/AdGuardHome-ToolBox** (source + CI). GHCR package **`A
 Image name (lowercase):
 
 ```text
-ghcr.io/ludditious/adguardhome-toolbox:latest
+ghcr.io/ludditious/adguard-home-toolbox:latest
 ```
 
 ## Pull and run (for you or anyone else)
@@ -25,13 +25,13 @@ ghcr.io/ludditious/adguardhome-toolbox:latest
 No clone and no `.env` required:
 
 ```bash
-docker pull ghcr.io/ludditious/adguardhome-toolbox:latest
+docker pull ghcr.io/ludditious/adguard-home-toolbox:latest
 
 docker run -d --name adguardhome-toolbox \
   -p 8080:8080 \
   -v adguardhome-toolbox-data:/data \
   --restart unless-stopped \
-  ghcr.io/ludditious/adguardhome-toolbox:latest
+  ghcr.io/ludditious/adguard-home-toolbox:latest
 ```
 
 ### Hostnames / DNS

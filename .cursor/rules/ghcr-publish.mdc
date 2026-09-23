@@ -6,7 +6,7 @@ alwaysApply: true
 # AdGuard Home ToolBox — release / Docker publish
 
 Canonical repo: **ludditious/AdGuardHome-ToolBox**  
-GHCR image: **ghcr.io/ludditious/adguardhome-toolbox:latest**  
+GHCR image: **ghcr.io/ludditious/adguard-home-toolbox:latest**  
 CI: `.github/workflows/docker-publish.yml` (push to `main` or `workflow_dispatch`).
 
 When the user asks for a **new build**, **publish**, **release**, **push to GitHub**, or **new container**:
