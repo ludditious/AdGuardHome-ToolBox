@@ -24,6 +24,7 @@ from sqlalchemy.orm import Session
 
 from ..auth_constants import SECURITY_QUESTIONS
 from ..config import get_settings
+from ..version import APP_REVISION, read_bundled_version
 from ..database import get_db
 from ..models import User
 from ..security import (
@@ -45,6 +46,8 @@ def _auth_ctx(request: Request, **extra):
     return {
         "request": request,
         "app_title": settings.app_title,
+        "app_version": read_bundled_version(),
+        "app_revision": APP_REVISION,
         "minimal_layout": True,
         "security_questions": SECURITY_QUESTIONS,
         **extra,
