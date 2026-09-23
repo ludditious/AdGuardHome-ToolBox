@@ -1,0 +1,28 @@
+# Copy to config.yaml and fill in credentials.
+
+source:
+  url: http://192.168.200.10:3000
+  username: admin
+  password: changeme
+
+targets:
+  - name: basement
+    url: http://192.168.200.11:3000
+    username: admin
+    password: changeme
+  - name: office
+    url: http://192.168.202.10:3000
+    username: admin
+    password: changeme
+
+options:
+  verify_tls: false          # set true when using valid HTTPS certs
+  sync_dns: true               # upstreams, blocking mode, cache, etc.
+  sync_filter_lists: true      # subscription URLs + enabled state
+  sync_custom_rules: true      # user rules + whitelist rules
+  sync_rewrites: true
+  sync_clients: true           # persistent clients (names, tags, upstreams)
+  sync_blocked_services: true
+  sync_parental_safebrowsing_safesearch: true
+  refresh_lists_after_sync: true
+  dry_run: false

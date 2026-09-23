@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="page-head">
+
+  <h1>Activity log</h1>
+
+  <form method="post" action="/logs/clear" onsubmit="return confirm('Clear all log entries (sync runs and scheduler ticks)?');" class="inline-block">
+
+    <button type="submit" class="danger">Clear log</button>
+
+  </form>
+
+</div>
+
+{% for log in logs %}
+
+<article class="log-entry">
+
+  <header>
+
+    <strong>{{ log.started_at }}</strong>
+
+    — {{ log.trigger }}
+
+    — {% if log.exit_code == 0 %}<span class="ok">OK</span>{% else %}<span class="error">Failed</span>{% endif %}
+
+  </header>
+
+  <pre>{{ log.body }}</pre>
+
+</article>
+
+{% else %}
+
+<p class="muted">No log entries yet.</p>
+
+{% endfor %}
+
+{% endblock %}
+

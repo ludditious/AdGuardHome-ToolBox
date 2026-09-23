@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %} — Settings{% endblock %}
+
+{% block content %}
+
+<h1>Settings</h1>
+
+{% if message %}<p class="{{ message_class or 'notice' }}">{{ message }}</p>{% endif %}
+
+
+
+<form method="post" action="/settings/account/password" class="card">
+
+  <p class="muted">Signed in as <strong>{{ current_username }}</strong></p>
+
+  <label>Current password<input type="password" name="current_password" required autocomplete="current-password"></label>
+
+  <label>New password (8+ characters)<input type="password" name="new_password" required minlength="8" autocomplete="new-password"></label>
+
+  <label>Confirm new password<input type="password" name="confirm_password" required minlength="8" autocomplete="new-password"></label>
+
+  <button type="submit">Update password</button>
+
+</form>
+
+
+
+<form method="post" action="/settings/account/recovery" class="card">
+
+  {% if recovery_configured %}
+
+  <p class="muted">Recovery is set. Submit new answers to replace them.</p>
+
+  {% else %}
+
+  <p class="notice notice-warn">Set recovery answers so Forgot password works on the login page.</p>
+
+  {% endif %}
+
+  <label>{{ security_questions[0] }}<input type="text" name="answer_1" required autocomplete="off"></label>
+
+  <label>{{ security_questions[1] }}<input type="text" name="answer_2" required autocomplete="off"></label>
+
+  <label>{{ security_questions[2] }}<input type="text" name="answer_3" required autocomplete="off"></label>
+
+  <button type="submit">Save recovery answers</button>
+
+</form>
+
+
+
+<section class="card">
+
+  <h2 class="footer-heading">DNS resolution</h2>
+
+  <p class="muted small">Source and target hostnames use these resolvers first, then the container system DNS (<code>/etc/resolv.conf</code>). Comma-separated IPv4/IPv6 addresses (for example your LAN DNS).</p>
+
+  <form method="post" action="/settings/dns">
+
+    <label>Local DNS servers
+      <input type="text" name="dns_servers" value="{{ dns_servers }}" placeholder="192.168.1.1, 10.0.0.1" autocomplete="off">
+    </label>
+
+    <button type="submit">Save DNS settings</button>
+
+  </form>
+
+  <h2 class="footer-heading mt">Check for updates</h2>
+
+  <form method="post" action="/settings/updates">
+
+    <label class="check">
+      <input type="checkbox" name="check_updates_on_login" {% if check_updates_on_login %}checked{% endif %}>
+      Check for a new Docker image when I sign in
+    </label>
+
+    <p class="muted small">When enabled, the app contacts GitHub over the internet to read <code>version.txt</code> and compare it to this container. Disable if the server has no outbound access.</p>
+
+    <button type="submit">Save update preferences</button>
+
+  </form>
+
+</section>
+
+{% endblock %}
+

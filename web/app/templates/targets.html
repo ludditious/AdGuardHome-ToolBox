@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h1>Target servers</h1>
+
+<h2>Add target</h2>
+
+<form method="post" action="/targets/add" class="card">
+
+  <label>Name<input type="text" name="name" placeholder="Basement"></label>
+
+  <label>URL<input type="text" name="url" placeholder="http://192.168.1.11" required autocomplete="url"></label>
+
+  <label>Username<input type="text" name="username" value="admin"></label>
+
+  <label>Password
+
+    <div class="password-row">
+
+      <input class="pw-field" type="password" name="password" autocomplete="new-password">
+
+      <button type="button" class="pw-toggle">Show</button>
+
+    </div>
+
+  </label>
+
+  <label class="check"><input type="checkbox" name="enabled" checked> Enabled</label>
+
+  <button type="submit">Add</button>
+
+</form>
+
+<h2>Existing</h2>
+
+{% for t in targets %}
+
+{% if test_target_id == t.id and test_message %}
+
+<p class="{{ test_message_class }}">{{ test_message }}</p>
+
+{% endif %}
+
+<form method="post" action="/targets/{{ t.id }}/edit" class="card">
+
+  <label>Name<input type="text" name="name" value="{{ t.name }}"></label>
+
+  <label>URL<input type="text" name="url" value="{{ t.url }}" required autocomplete="url"></label>
+
+  <label>Username<input type="text" name="username" value="{{ t.username }}"></label>
+
+  <label>Password
+
+    <div class="password-row">
+
+      <input class="pw-field" type="password" name="password" value="{{ target_pw.get(t.id, '') }}" autocomplete="current-password">
+
+      <button type="button" class="pw-toggle">Show</button>
+
+    </div>
+
+  </label>
+
+  <label class="check"><input type="checkbox" name="enabled" {% if t.enabled %}checked{% endif %}> Enabled</label>
+
+  <div class="row-actions">
+
+    <button type="submit">Save</button>
+
+    <button type="submit" formaction="/targets/{{ t.id }}/test" formmethod="post">Test connection</button>
+
+  </div>
+
+</form>
+
+<form method="post" action="/targets/{{ t.id }}/delete" onsubmit="return confirm('Delete this target?');">
+
+  <button type="submit" class="danger">Delete</button>
+
+</form>
+
+<hr>
+
+{% else %}
+
+<p class="muted">No targets yet.</p>
+
+{% endfor %}
+
+{% endblock %}
+

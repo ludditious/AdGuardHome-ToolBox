@@ -1,0 +1,75 @@
+<section class="footer-backups card backup-section">
+
+  <h2>AdGuard Home ToolBox</h2>
+
+  <p class="muted small">Backs up this app’s configuration: source, targets, sync options, and schedule (encrypted server passwords as stored; not your ToolBox login).</p>
+
+  <form method="post" action="/backups/toolbox/create" class="footer-actions">
+
+    <input type="hidden" name="next" value="/backups">
+
+    <button type="submit">Create ToolBox backup now</button>
+
+  </form>
+
+  {% if toolbox_backups %}
+
+  <table class="footer-table">
+
+    <thead><tr><th>Name</th><th>Created (UTC)</th><th></th></tr></thead>
+
+    <tbody>
+
+    {% for b in toolbox_backups %}
+
+      <tr>
+
+        <td>{{ b.name }}</td>
+
+        <td>{{ b.created_at }}</td>
+
+        <td class="backup-actions">
+
+          <a href="/backups/toolbox/{{ b.id }}/download">Download</a>
+
+          <form method="post" action="/backups/toolbox/{{ b.id }}/restore" class="inline-form" onsubmit="return confirm('Replace your ToolBox settings with this backup?');">
+
+            <button type="submit" class="linkish">Restore</button>
+
+          </form>
+
+          <form method="post" action="/backups/toolbox/{{ b.id }}/delete" class="inline-form" onsubmit="return confirm('Delete this ToolBox backup?');">
+
+            <button type="submit" class="linkish danger-text">Delete</button>
+
+          </form>
+
+        </td>
+
+      </tr>
+
+    {% endfor %}
+
+    </tbody>
+
+  </table>
+
+  {% else %}
+
+  <p class="muted">No ToolBox backups yet.</p>
+
+  {% endif %}
+
+  <form method="post" action="/backups/toolbox/restore-upload" enctype="multipart/form-data" class="restore-upload">
+
+    <label>Restore ToolBox from file (.json)
+
+      <input type="file" name="backup_file" accept=".json,application/json" required>
+
+    </label>
+
+    <button type="submit" onclick="return confirm('Replace your ToolBox settings with this file?');">Restore file</button>
+
+  </form>
+
+</section>

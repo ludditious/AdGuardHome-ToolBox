@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h1>Schedule</h1>
+
+<p class="muted">Built-in scheduler checks every minute (UTC). When your interval has passed on a selected day, sync runs automatically.</p>
+
+<form method="post" action="/schedule">
+
+  <label class="check"><input type="checkbox" name="enabled" {% if schedule.enabled %}checked{% endif %}> Enable scheduled sync</label>
+
+  <label>Interval
+
+    <div class="interval-row">
+
+      <input type="number" name="interval_value" min="1" max="10080" value="{{ interval_value }}" required>
+
+      <select name="interval_unit">
+
+        <option value="minutes" {% if interval_unit == 'minutes' %}selected{% endif %}>minutes</option>
+
+        <option value="hours" {% if interval_unit == 'hours' %}selected{% endif %}>hours</option>
+
+      </select>
+
+    </div>
+
+  </label>
+
+  <fieldset>
+
+    <legend>Days (Sun–Sat, UTC)</legend>
+
+    <div class="day-grid">
+
+    {% for d in day_keys %}
+
+      <label class="check"><input type="checkbox" name="day_{{ d }}" {% if d in days %}checked{% endif %}> {{ d|upper }}</label>
+
+    {% endfor %}
+
+    </div>
+
+  </fieldset>
+
+  <button type="submit">Save schedule</button>
+
+</form>
+
+{% if schedule.last_run_at %}
+
+<p class="muted">Last successful scheduled sync finished: {{ schedule.last_run_at }}</p>
+
+{% endif %}
+
+
+
+<h2>Scheduler activity</h2>
+
+<p class="muted small">One line per minute while the app is running. Sync runs appear in Log with trigger <code>cron</code>.</p>
+
+{% if cron_ticks %}
+
+<table>
+
+  <thead><tr><th>Time (UTC)</th><th>Due</th><th>Ran</th><th>Status</th><th>Detail</th></tr></thead>
+
+  <tbody>
+
+  {% for t in cron_ticks %}
+
+    <tr>
+
+      <td>{{ t.created_at }}</td>
+
+      <td>{{ t.users_due }}</td>
+
+      <td>{{ t.syncs_ran }}</td>
+
+      <td>{% if t.errors %}<span class="error">Error</span>{% elif t.syncs_ran %}<span class="ok">Sync</span>{% else %}<span class="muted">Idle</span>{% endif %}</td>
+
+      <td>{{ t.detail }}</td>
+
+    </tr>
+
+  {% endfor %}
+
+  </tbody>
+
+</table>
+
+{% else %}
+
+<p class="muted">No scheduler ticks yet — wait about a minute after the container starts.</p>
+
+{% endif %}
+
+{% endblock %}
+

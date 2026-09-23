@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Sync options</h1>
+<form method="post" action="/options">
+  <label class="check"><input type="checkbox" name="verify_tls" {% if options.verify_tls %}checked{% endif %}> Verify TLS certificates</label>
+  <label class="check"><input type="checkbox" name="sync_dns" {% if options.sync_dns %}checked{% endif %}> Sync DNS settings</label>
+  <label class="check"><input type="checkbox" name="sync_filter_lists" {% if options.sync_filter_lists %}checked{% endif %}> Sync block/allow lists</label>
+  <label class="check"><input type="checkbox" name="sync_custom_rules" {% if options.sync_custom_rules %}checked{% endif %}> Sync custom rules</label>
+  <label class="check"><input type="checkbox" name="sync_rewrites" {% if options.sync_rewrites %}checked{% endif %}> Sync DNS rewrites</label>
+  <label class="check"><input type="checkbox" name="sync_clients" {% if options.sync_clients %}checked{% endif %}> Sync persistent clients</label>
+  <label class="check"><input type="checkbox" name="sync_blocked_services" {% if options.sync_blocked_services %}checked{% endif %}> Sync blocked services</label>
+  <label class="check"><input type="checkbox" name="sync_parental_safebrowsing_safesearch" {% if options.sync_parental_safebrowsing_safesearch %}checked{% endif %}> Sync parental / safe browsing / safe search</label>
+  <label class="check"><input type="checkbox" name="refresh_lists_after_sync" {% if options.refresh_lists_after_sync %}checked{% endif %}> Refresh lists after sync</label>
+  <label class="check"><input type="checkbox" name="dry_run" {% if options.dry_run %}checked{% endif %}> Dry run (no changes)</label>
+  <button type="submit">Save options</button>
+</form>
+{% endblock %}

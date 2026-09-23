@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %} — Update{% endblock %}
+
+{% block content %}
+<h1>Update</h1>
+
+{% if update_error %}
+<p class="notice notice-warn">Could not reach the update server: {{ update_error }}</p>
+{% endif %}
+
+<div class="card">
+  <p>Installed version: <strong><code>{{ installed_version }}</code></strong></p>
+  {% if remote_version %}
+  <p>Latest published: <strong><code>{{ remote_version }}</code></strong></p>
+  {% endif %}
+  {% if update_available %}
+  <p class="notice notice-ok">A newer Docker image is available.</p>
+  {% else %}
+  <p class="muted">You are on the latest published version (or could not compare).</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2 class="footer-heading">Upgrade on the host</h2>
+  <p class="muted small">Run on the Docker host. Edit the commands to match your container name, ports, volume, and environment.</p>
+  <p class="notice notice-warn small">Example only — adjust <code>--name</code>, <code>-p</code>, <code>-v</code>, and any <code>-e</code> flags to match your current install.</p>
+  <div class="cmd-copy-block">
+    <textarea readonly class="cmd-box" id="upgrade-cmd" rows="4">docker pull ghcr.io/ludditious/adguardhome-toolbox:latest
+docker rm -f adguardhome-sync
+docker run -d --name adguardhome-sync -p 8080:8080 -v adguardhome-toolbox:/data --restart unless-stopped ghcr.io/ludditious/adguardhome-toolbox:latest</textarea>
+    <button type="button" class="copy-cmd" data-target="upgrade-cmd">Copy</button>
+  </div>
+</div>
+
+<div class="card">
+  <h2 class="footer-heading">Release notes</h2>
+  {% if release_notes %}
+  <pre class="release-notes">{{ release_notes }}</pre>
+  {% else %}
+  <p class="muted">No release notes available.</p>
+  {% endif %}
+</div>
+{% endblock %}

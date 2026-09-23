@@ -1,0 +1,77 @@
+<section class="footer-backups card backup-section">
+
+  <h2>AdGuard Home</h2>
+
+  <p class="muted small">Backups all AdGuard Home settings from the <strong>source</strong> server (no login data). Names look like <code>hostname-YYYY-MM-DD-HHMMSS</code>.</p>
+
+  <form method="post" action="/backups/create" class="footer-actions">
+
+    <input type="hidden" name="next" value="/backups">
+
+    <button type="submit">Create backup now</button>
+
+  </form>
+
+  {% if footer_backups %}
+
+  <table class="footer-table">
+
+    <thead><tr><th>Name</th><th>Source URL</th><th>Created (UTC)</th><th></th></tr></thead>
+
+    <tbody>
+
+    {% for b in footer_backups %}
+
+      <tr>
+
+        <td>{{ b.name }}</td>
+
+        <td class="muted small">{{ b.source_url }}</td>
+
+        <td>{{ b.created_at }}</td>
+
+        <td class="backup-actions">
+
+          <a href="/backups/{{ b.id }}/download">Download</a>
+
+          <form method="post" action="/backups/{{ b.id }}/restore" class="inline-form" onsubmit="return confirm('Restore these settings to the source server?');">
+
+            <button type="submit" class="linkish">Restore</button>
+
+          </form>
+
+          <form method="post" action="/backups/{{ b.id }}/delete" class="inline-form" onsubmit="return confirm('Delete this backup?');">
+
+            <button type="submit" class="linkish danger-text">Delete</button>
+
+          </form>
+
+        </td>
+
+      </tr>
+
+    {% endfor %}
+
+    </tbody>
+
+  </table>
+
+  {% else %}
+
+  <p class="muted">No backups yet.</p>
+
+  {% endif %}
+
+  <form method="post" action="/backups/restore-upload" enctype="multipart/form-data" class="restore-upload">
+
+    <label>Restore from file (.json)
+
+      <input type="file" name="backup_file" accept=".json,application/json" required>
+
+    </label>
+
+    <button type="submit" onclick="return confirm('Restore uploaded backup to the source server?');">Restore file</button>
+
+  </form>
+
+</section>

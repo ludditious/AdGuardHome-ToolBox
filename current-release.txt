@@ -1,0 +1,11 @@
+AdGuard Home ToolBox — release notes
+
+Version (see version.txt on main after CI)
+
+What's new
+- Repository and GHCR under ludditious/AdGuardHome-ToolBox
+- About: licensing link and AGPL notice; official site https://ludditious.com
+
+Upgrade
+  docker pull ghcr.io/ludditious/adguardhome-toolbox:latest
+Then recreate the container with the same volumes and environment.

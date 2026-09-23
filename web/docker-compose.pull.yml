@@ -1,0 +1,23 @@
+# Run the published image from GitHub Container Registry (no local build).
+#
+#   docker compose -f web/docker-compose.pull.yml up -d
+#
+# Image: ghcr.io/ludditious/adguardhome-toolbox:latest
+
+services:
+  web:
+    image: ghcr.io/ludditious/adguardhome-toolbox:latest
+    container_name: adguardhome-toolbox
+    ports:
+      - "8080:8080"
+    environment:
+      ALLOW_REGISTRATION: "true"
+      DATABASE_URL: sqlite:////data/aghomesync.db
+      # LAN DNS (comma-separated) if hostnames only resolve on your network, e.g. CUSTOM_DNS: "192.168.1.1"
+      # CUSTOM_DNS: "10.0.0.1"
+    volumes:
+      - adguardhome-toolbox-data:/data
+    restart: unless-stopped
+
+volumes:
+  adguardhome-toolbox-data:

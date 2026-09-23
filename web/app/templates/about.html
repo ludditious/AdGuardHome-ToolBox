@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block title %} — About{% endblock %}
+
+{% block content %}
+
+<h1>About</h1>
+
+<div class="card about-card">
+
+  <p class="about-name">{{ app_name }}</p>
+
+  <p class="about-version">Version <strong>{{ app_version }}</strong> · Revised <strong>{{ app_revision }}</strong></p>
+
+  <p class="muted">AdGuard Home ToolBox is a tool to syncronize the setting from a source instance to multiple targets whether hosted locally or on the internet.</p>
+
+  <p class="muted small">Docker Image: <code>ghcr.io/ludditious/adguardhome-toolbox:latest</code></p>
+
+  <p class="muted small">GitHub Repo: <a href="https://github.com/ludditious/AdGuardHome-ToolBox">https://github.com/ludditious/AdGuardHome-ToolBox</a></p>
+
+  <p class="muted small">Official Website: <a href="https://ludditious.com">https://ludditious.com</a></p>
+
+  <p class="muted small">Licensing: <a href="https://ludditious.com/adguardhome-toolbox-licensing">https://ludditious.com/adguardhome-toolbox-licensing</a></p>
+
+  <hr class="about-license-rule" aria-hidden="true">
+
+  <div class="about-license-notice muted small">
+    <p>Copyright ©2026 <a href="https://ludditious.com">https://ludditious.com</a></p>
+    <p>This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License as published by
+    the Free Software Foundation, version 3 License.</p>
+    <p>This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU Affero General Public License for more details.</p>
+  </div>
+
+</div>
+
+{% endblock %}
+

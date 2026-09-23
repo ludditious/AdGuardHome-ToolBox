@@ -1,0 +1,93 @@
+name: Publish Docker image
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+    paths-ignore:
+      - version.txt
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  build-and-push:
+    if: github.repository == 'ludditious/AdGuardHome-ToolBox'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Write version.txt for this image
+        id: ver
+        run: |
+          VER="$(date -u +%Y.%m.%d)-${{ github.run_number }}"
+          echo "$VER" > version.txt
+          echo "version=$VER" >> "$GITHUB_ENV"
+          echo "version=$VER" >> "$GITHUB_OUTPUT"
+
+      - name: Image name (GHCR is lowercase)
+        run: |
+          owner="$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')"
+          repo="$(echo '${{ github.event.repository.name }}' | tr '[:upper:]' '[:lower:]')"
+          echo "IMAGE=ghcr.io/${owner}/${repo}" >> "$GITHUB_ENV"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          push: true
+          tags: ${{ env.IMAGE }}:latest
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.url=https://github.com/${{ github.repository }}
+            org.opencontainers.image.title=AdGuardHome-ToolBox
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ env.version }}
+          platforms: linux/amd64
+          provenance: false
+          sbom: false
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: published-version-txt
+          path: version.txt
+
+  sync-version-txt:
+    needs: build-and-push
+    if: github.repository == 'ludditious/AdGuardHome-ToolBox' && github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: published-version-txt
+          path: .
+
+      - name: Commit version.txt
+        run: |
+          if [ -f published-version-txt/version.txt ]; then
+            mv published-version-txt/version.txt version.txt
+            rmdir published-version-txt 2>/dev/null || true
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add version.txt
+          git diff --staged --quiet && exit 0
+          git commit -m "chore: version.txt for image publish [skip ci]"
+          git push
