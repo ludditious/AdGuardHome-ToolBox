@@ -26,6 +26,10 @@ def get_settings() -> "Settings":
     return Settings()
 
 
+def clear_settings_cache() -> None:
+    get_settings.cache_clear()
+
+
 class Settings:
     def __init__(self) -> None:
         self.secret_key = os.environ.get("SECRET_KEY", "change-me-in-production")

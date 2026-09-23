@@ -18,13 +18,19 @@
 from __future__ import annotations
 
 import json
+import os
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 from sqlalchemy.orm import Session
 
+from .config import clear_settings_cache, get_settings
+from .crypto import decrypt
 from .models import TargetServer, ToolBoxBackup, User
 from .services import ensure_user_defaults
+
+SECRETS_FILE = Path("/data/app-secrets.env")
 
 CONFIG_FORMAT = "adguardhome-toolbox-config"
 CONFIG_VERSION = 1
@@ -90,7 +96,47 @@ def build_toolbox_config_document(db: Session, user: User) -> dict[str, Any]:
             sched,
             fields=("enabled", "interval_minutes", "days_json"),
         ),
+        "container_secrets": _container_secrets_for_backup(),
     }
+
+
+def _container_secrets_for_backup() -> dict[str, str]:
+    settings = get_settings()
+    return {
+        "secret_key": settings.secret_key,
+        "cron_secret": settings.cron_secret,
+    }
+
+
+def _restore_container_secrets(secrets: dict[str, Any]) -> bool:
+    if not isinstance(secrets, dict):
+        return False
+    secret_key = str(secrets.get("secret_key") or "").strip()
+    cron_secret = str(secrets.get("cron_secret") or "").strip()
+    if not secret_key:
+        return False
+    SECRETS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    SECRETS_FILE.write_text(
+        f"SECRET_KEY={secret_key}\nCRON_SECRET={cron_secret}\n",
+        encoding="utf-8",
+    )
+    os.chmod(SECRETS_FILE, 0o600)
+    os.environ["SECRET_KEY"] = secret_key
+    if cron_secret:
+        os.environ["CRON_SECRET"] = cron_secret
+    clear_settings_cache()
+    return True
+
+
+def _scrub_unreadable_passwords(db: Session, user: User) -> None:
+    sk = get_settings().secret_key
+    src = user.source
+    if src and src.password_enc and not decrypt(sk, src.password_enc):
+        src.password_enc = ""
+    for tgt in user.targets:
+        if tgt.password_enc and not decrypt(sk, tgt.password_enc):
+            tgt.password_enc = ""
+    db.commit()
 
 
 def parse_toolbox_config_json(text: str) -> dict[str, Any]:
@@ -120,6 +166,7 @@ def _apply_fields(obj: Any, payload: dict[str, Any], fields: tuple[str, ...]) ->
 
 def apply_toolbox_config(db: Session, user: User, doc: dict[str, Any]) -> None:
     ensure_user_defaults(db, user)
+    secrets_restored = _restore_container_secrets(doc.get("container_secrets") or {})
     user.check_updates_on_login = bool(doc.get("check_updates_on_login", False))
     src = user.source
     opts = user.sync_options
@@ -178,6 +225,8 @@ def apply_toolbox_config(db: Session, user: User, doc: dict[str, Any]) -> None:
         db.add(tgt)
 
     db.commit()
+    if not secrets_restored:
+        _scrub_unreadable_passwords(db, user)
 
 
 def create_toolbox_backup(db: Session, user: User) -> ToolBoxBackup:
