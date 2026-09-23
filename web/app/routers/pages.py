@@ -49,11 +49,13 @@ from ..toolbox_backup_service import (
 )
 from ..schedule_ui import minutes_from_form, parts_from_minutes
 from ..auth_constants import SECURITY_QUESTIONS
-from ..security import hash_password, hash_recovery_answer, verify_password
+from ..security import hash_password, verify_password
 from ..services import (
     delete_target,
     ensure_user_defaults,
     execute_sync,
+    recovery_answers_for_display,
+    save_recovery_answers,
     save_source,
     save_target,
     user_has_recovery,
@@ -133,6 +135,9 @@ def settings_page(
     elif account_err and msg:
         message = msg
         message_class = "notice notice-err"
+    sk = get_settings().secret_key
+    recovery_answers = recovery_answers_for_display(user, sk)
+    recovery_reenter = user_has_recovery(user) and not any(recovery_answers)
     return templates.TemplateResponse(
         request,
         "settings.html",
@@ -143,6 +148,8 @@ def settings_page(
             message=message,
             message_class=message_class,
             security_questions=SECURITY_QUESTIONS,
+            recovery_answers=recovery_answers,
+            recovery_reenter=recovery_reenter,
             recovery_configured=user_has_recovery(user),
             check_updates_on_login=user.check_updates_on_login,
         ),
@@ -178,18 +185,13 @@ def settings_set_recovery(
     answer_2: str = Form(""),
     answer_3: str = Form(""),
 ):
-    a1, a2, a3 = answer_1.strip(), answer_2.strip(), answer_3.strip()
-    filled = (bool(a1), bool(a2), bool(a3))
-    if user_has_recovery(user) and not any(filled):
-        return RedirectResponse("/settings?account_ok=1&msg=Recovery%20answers%20unchanged", status_code=303)
-    if not all(filled):
+    try:
+        save_recovery_answers(user, (answer_1, answer_2, answer_3), get_settings().secret_key)
+    except ValueError:
         return RedirectResponse(
-            "/settings?account_err=1&msg=Answer%20all%20three%20questions%20to%20set%20or%20change%20recovery",
+            "/settings?account_err=1&msg=Answer%20all%20three%20recovery%20questions",
             status_code=303,
         )
-    user.recovery_answer_1_hash = hash_recovery_answer(a1)
-    user.recovery_answer_2_hash = hash_recovery_answer(a2)
-    user.recovery_answer_3_hash = hash_recovery_answer(a3)
     db.commit()
     return RedirectResponse("/settings?account_ok=1&msg=Recovery%20answers%20saved", status_code=303)
 

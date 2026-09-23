@@ -128,6 +128,9 @@ def migrate_schema() -> None:
         ("users", "recovery_answer_1_hash", "TEXT NOT NULL DEFAULT ''"),
         ("users", "recovery_answer_2_hash", "TEXT NOT NULL DEFAULT ''"),
         ("users", "recovery_answer_3_hash", "TEXT NOT NULL DEFAULT ''"),
+        ("users", "recovery_answer_1_enc", "TEXT NOT NULL DEFAULT ''"),
+        ("users", "recovery_answer_2_enc", "TEXT NOT NULL DEFAULT ''"),
+        ("users", "recovery_answer_3_enc", "TEXT NOT NULL DEFAULT ''"),
         ("users", "check_updates_on_login", "BOOLEAN NOT NULL DEFAULT 0"),
 
     ]

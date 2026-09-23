@@ -197,6 +197,13 @@ ol.recovery-questions-list {
   color: var(--text);
 }
 ol.recovery-questions-list li { margin-bottom: 0.35rem; }
+.recovery-qa-list { display: flex; flex-direction: column; gap: 1rem; margin: 1rem 0; }
+.recovery-qa-item { margin: 0; }
+.recovery-q { margin: 0 0 0.35rem; font-weight: 500; }
+.recovery-n { display: inline-block; min-width: 1.5rem; }
+.recovery-a { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-bottom: 0; }
+.recovery-a-label { font-family: ui-monospace, Consolas, monospace; color: var(--muted); flex-shrink: 0; }
+.recovery-a input[type=text] { flex: 1 1 12rem; margin-top: 0; }
 .check { display: flex; align-items: center; gap: 0.5rem; }
 button {
   background: var(--btn-bg);

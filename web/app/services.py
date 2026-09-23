@@ -74,6 +74,33 @@ def user_has_recovery(user: User) -> bool:
     )
 
 
+def recovery_answers_for_display(user: User, secret_key: str) -> list[str]:
+    """Plaintext answers for Settings (encrypted at rest)."""
+    enc = (
+        user.recovery_answer_1_enc,
+        user.recovery_answer_2_enc,
+        user.recovery_answer_3_enc,
+    )
+    from .crypto import decrypt
+
+    return [decrypt(secret_key, t) if t else "" for t in enc]
+
+
+def save_recovery_answers(user: User, answers: tuple[str, str, str], secret_key: str) -> None:
+    from .crypto import encrypt
+    from .security import hash_recovery_answer
+
+    a1, a2, a3 = (a.strip() for a in answers)
+    if not all((a1, a2, a3)):
+        raise ValueError("All three recovery answers are required.")
+    user.recovery_answer_1_hash = hash_recovery_answer(a1)
+    user.recovery_answer_2_hash = hash_recovery_answer(a2)
+    user.recovery_answer_3_hash = hash_recovery_answer(a3)
+    user.recovery_answer_1_enc = encrypt(secret_key, a1)
+    user.recovery_answer_2_enc = encrypt(secret_key, a2)
+    user.recovery_answer_3_enc = encrypt(secret_key, a3)
+
+
 def ensure_user_defaults(db: Session, user: User) -> None:
     if user.source is None:
         user.source = SourceServer(user_id=user.id)

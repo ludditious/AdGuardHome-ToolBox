@@ -40,6 +40,9 @@ class User(Base):
     recovery_answer_1_hash: Mapped[str] = mapped_column(Text, default="")
     recovery_answer_2_hash: Mapped[str] = mapped_column(Text, default="")
     recovery_answer_3_hash: Mapped[str] = mapped_column(Text, default="")
+    recovery_answer_1_enc: Mapped[str] = mapped_column(Text, default="")
+    recovery_answer_2_enc: Mapped[str] = mapped_column(Text, default="")
+    recovery_answer_3_enc: Mapped[str] = mapped_column(Text, default="")
     check_updates_on_login: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 

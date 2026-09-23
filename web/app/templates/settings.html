@@ -26,33 +26,36 @@
 
   <h2 class="footer-heading">Password recovery</h2>
 
-  <p class="muted small">These questions are shown on the login page under <strong>Forgot password</strong>. Answers are never displayed here—fill the fields below only when you want to set or change them.</p>
+  <p class="muted small">These questions are used on the login page under <strong>Forgot password</strong>. Your answers are shown below so you can review or change them anytime.</p>
 
-  {% if not recovery_configured %}
-  <p class="notice notice-warn">Recovery is not set up yet. Answer all three questions and save.</p>
-  {% else %}
-  <p class="muted small">Recovery is active. Leave answers blank to keep your current ones.</p>
+  {% if recovery_reenter %}
+  <p class="notice notice-warn">Recovery was set before answers could be shown here. Enter all three answers once and save to store them for this screen.</p>
+  {% elif not recovery_configured %}
+  <p class="notice notice-warn">Set all three answers and save so Forgot password works.</p>
   {% endif %}
 
-  <ol class="recovery-questions-list">
-    {% for q in security_questions %}
-    <li>{{ q }}</li>
-    {% endfor %}
-  </ol>
+  <div class="recovery-qa-list">
+    <div class="recovery-qa-item">
+      <p class="recovery-q"><span class="recovery-n">1:</span> {{ security_questions[0] }}</p>
+      <label class="recovery-a"><span class="recovery-a-label">-A:</span>
+        <input type="text" name="answer_1" value="{{ recovery_answers[0] }}" required autocomplete="off" placeholder="Answer here">
+      </label>
+    </div>
+    <div class="recovery-qa-item">
+      <p class="recovery-q"><span class="recovery-n">2:</span> {{ security_questions[1] }}</p>
+      <label class="recovery-a"><span class="recovery-a-label">-A:</span>
+        <input type="text" name="answer_2" value="{{ recovery_answers[1] }}" required autocomplete="off" placeholder="Answer here">
+      </label>
+    </div>
+    <div class="recovery-qa-item">
+      <p class="recovery-q"><span class="recovery-n">3:</span> {{ security_questions[2] }}</p>
+      <label class="recovery-a"><span class="recovery-a-label">-A:</span>
+        <input type="text" name="answer_3" value="{{ recovery_answers[2] }}" required autocomplete="off" placeholder="Answer here">
+      </label>
+    </div>
+  </div>
 
-  <label>{{ security_questions[0] }}
-    <input type="text" name="answer_1" {% if not recovery_configured %}required{% endif %} autocomplete="off" placeholder="{% if recovery_configured %}Leave blank to keep{% else %}Your answer{% endif %}">
-  </label>
-
-  <label>{{ security_questions[1] }}
-    <input type="text" name="answer_2" {% if not recovery_configured %}required{% endif %} autocomplete="off" placeholder="{% if recovery_configured %}Leave blank to keep{% else %}Your answer{% endif %}">
-  </label>
-
-  <label>{{ security_questions[2] }}
-    <input type="text" name="answer_3" {% if not recovery_configured %}required{% endif %} autocomplete="off" placeholder="{% if recovery_configured %}Leave blank to keep{% else %}Your answer{% endif %}">
-  </label>
-
-  <button type="submit">{% if recovery_configured %}Update recovery answers{% else %}Save recovery answers{% endif %}</button>
+  <button type="submit">Save recovery answers</button>
 
 </form>
 
