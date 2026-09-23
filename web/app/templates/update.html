@@ -27,8 +27,8 @@
   <p class="notice notice-warn small">Example only — adjust <code>--name</code>, <code>-p</code>, <code>-v</code>, and any <code>-e</code> flags to match your current install.</p>
   <div class="cmd-copy-block">
     <textarea readonly class="cmd-box" id="upgrade-cmd" rows="4">docker pull ghcr.io/ludditious/adguardhome-toolbox:latest
-docker rm -f adguardhome-sync
-docker run -d --name adguardhome-sync -p 8080:8080 -v adguardhome-toolbox:/data --restart unless-stopped ghcr.io/ludditious/adguardhome-toolbox:latest</textarea>
+docker rm -f adguardhome-toolbox
+docker run -d --name adguardhome-toolbox -p 81:8080 -v adguardhome-toolbox:/data --restart unless-stopped ghcr.io/ludditious/adguardhome-toolbox:latest</textarea>
     <button type="button" class="copy-cmd" data-target="upgrade-cmd">Copy</button>
   </div>
 </div>

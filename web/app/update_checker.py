@@ -56,6 +56,20 @@ def installed_version() -> str:
     return "unknown"
 
 
+def _version_sort_key(version: str) -> tuple[str, int]:
+    """Sort key for YYYY.MM.DD-<run> versions from CI."""
+    text = (version or "").strip()
+    if not text or text == "unknown":
+        return ("", -1)
+    date_part, _, tail = text.partition("-")
+    run = int(tail) if tail.isdigit() else 0
+    return (date_part, run)
+
+
+def _remote_is_newer(installed: str, remote: str) -> bool:
+    return _version_sort_key(remote) > _version_sort_key(installed)
+
+
 def _fetch_text(url: str) -> str:
     resp = requests.get(url, timeout=FETCH_TIMEOUT, headers={"User-Agent": "AdGuardHome-ToolBox-UpdateCheck/1.0"})
     resp.raise_for_status()
@@ -78,7 +92,7 @@ def check_for_update() -> UpdateStatus:
             release_notes="",
             error=str(exc),
         )
-    update = bool(remote_ver) and remote_ver != inst
+    update = bool(remote_ver) and _remote_is_newer(inst, remote_ver)
     return UpdateStatus(
         installed_version=inst,
         remote_version=remote_ver,
