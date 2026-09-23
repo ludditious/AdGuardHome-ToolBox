@@ -66,6 +66,46 @@ jobs:
           provenance: false
           sbom: false
 
+      - name: Link GHCR package to this repository
+        uses: actions/github-script@v7
+        env:
+          PACKAGE_NAME: adguardhome-toolbox
+          OLD_REPO_ID: "1383269016"
+        with:
+          script: |
+            const pkg = process.env.PACKAGE_NAME;
+            const repoId = context.payload.repository.id;
+            const oldRepoId = Number(process.env.OLD_REPO_ID);
+            try {
+              await github.rest.packages.removeRepositoryFromPackageForAuthenticatedUser({
+                package_type: "container",
+                package_name: pkg,
+                repository_id: oldRepoId,
+              });
+              core.info(`Removed AdGuardHome-ToolBox-old (id ${oldRepoId}) from package.`);
+            } catch (error) {
+              core.info(`Remove old repo link: ${error.message}`);
+            }
+            await github.rest.packages.addRepositoryToPackageForAuthenticatedUser({
+              package_type: "container",
+              package_name: pkg,
+              repository_id: repoId,
+            });
+            core.info(`Linked package ${pkg} to ${context.repo.owner}/${context.repo.repo} (id ${repoId}).`);
+
+      - name: Set container package visibility to public
+        uses: actions/github-script@v7
+        env:
+          PACKAGE_NAME: adguardhome-toolbox
+        with:
+          script: |
+            await github.rest.packages.setPackageVisibilityForAuthenticatedUser({
+              package_type: "container",
+              package_name: process.env.PACKAGE_NAME,
+              visibility: "public",
+            });
+            core.info("Package visibility set to public.");
+
       - uses: actions/upload-artifact@v4
         with:
           name: published-version-txt
