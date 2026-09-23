@@ -77,20 +77,18 @@ jobs:
             const repoId = context.payload.repository.id;
             const oldRepoId = Number(process.env.OLD_REPO_ID);
             try {
-              await github.rest.packages.removeRepositoryFromPackageForAuthenticatedUser({
-                package_type: "container",
-                package_name: pkg,
-                repository_id: oldRepoId,
-              });
+              await github.request(
+                "DELETE /user/packages/container/{package_name}/repositories/{repository_id}",
+                { package_name: pkg, repository_id: oldRepoId },
+              );
               core.info(`Removed AdGuardHome-ToolBox-old (id ${oldRepoId}) from package.`);
             } catch (error) {
               core.info(`Remove old repo link: ${error.message}`);
             }
-            await github.rest.packages.addRepositoryToPackageForAuthenticatedUser({
-              package_type: "container",
-              package_name: pkg,
-              repository_id: repoId,
-            });
+            await github.request(
+              "PUT /user/packages/container/{package_name}/repositories/{repository_id}",
+              { package_name: pkg, repository_id: repoId },
+            );
             core.info(`Linked package ${pkg} to ${context.repo.owner}/${context.repo.repo} (id ${repoId}).`);
 
       - name: Set container package visibility to public
@@ -99,8 +97,7 @@ jobs:
           PACKAGE_NAME: adguardhome-toolbox
         with:
           script: |
-            await github.rest.packages.setPackageVisibilityForAuthenticatedUser({
-              package_type: "container",
+            await github.request("POST /user/packages/container/{package_name}/visibility", {
               package_name: process.env.PACKAGE_NAME,
               visibility: "public",
             });
