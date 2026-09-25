@@ -2,11 +2,11 @@
 #
 #   docker compose -f web/docker-compose.pull.yml up -d
 #
-# Image: ghcr.io/ludditious/adguard-home-toolbox:latest
+# Image: ghcr.io/ludditious/adguardhome-toolbox:latest
 
 services:
   web:
-    image: ghcr.io/ludditious/adguard-home-toolbox:latest
+    image: ghcr.io/ludditious/adguardhome-toolbox:latest
     container_name: adguardhome-toolbox
     ports:
       - "8080:8080"

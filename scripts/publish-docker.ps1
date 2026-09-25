@@ -27,7 +27,7 @@ Invoke-RestMethod -Method Post `
     -Body $body `
     -ContentType "application/json"
 
-Write-Host "Publish started. Image: ghcr.io/ludditious/adguard-home-toolbox:latest"
+Write-Host "Publish started. Image: ghcr.io/ludditious/adguardhome-toolbox:latest"
 Write-Host "Actions: https://github.com/$repo/actions/workflows/docker-publish.yml"
 Write-Host ""
-Write-Host "Package page (new repo): https://github.com/ludditious/AdGuardHome-ToolBox/pkgs/container/adguard-home-toolbox"
+Write-Host "Package page (new repo): https://github.com/ludditious/AdGuardHome-ToolBox/pkgs/container/adguardhome-toolbox"

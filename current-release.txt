@@ -7,5 +7,5 @@ What's new
 - About: licensing link and AGPL notice; official site https://ludditious.com
 
 Upgrade
-  docker pull ghcr.io/ludditious/adguard-home-toolbox:latest
+  docker pull ghcr.io/ludditious/adguardhome-toolbox:latest
 Then recreate the container with the same volumes and environment.

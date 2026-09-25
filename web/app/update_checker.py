@@ -26,7 +26,7 @@ import requests
 
 from agsync.dns_resolve import DEFAULT_PUBLIC_DNS, resolve_hostname
 
-DOCKER_PULL_IMAGE = "ghcr.io/ludditious/adguard-home-toolbox:latest"
+DOCKER_PULL_IMAGE = "ghcr.io/ludditious/adguardhome-toolbox:latest"
 DEFAULT_RAW_BASE = "https://raw.githubusercontent.com/ludditious/AdGuardHome-ToolBox/main"
 FETCH_TIMEOUT = 12
 
