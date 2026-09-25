@@ -146,7 +146,7 @@ button.copy-cmd:hover { border-color: var(--accent); color: var(--accent); }
 }
 .narrow { max-width: 420px; }
 label { display: block; margin-bottom: 0.75rem; }
-input[type=text]:not(.ip-octets), input[type=url], input[type=email], input[type=password], input[type=number]:not(.port-field) {
+input[type=text], input[type=url], input[type=email], input[type=password], input[type=number] {
   width: 100%;
   margin-top: 0.25rem;
   padding: 0.5rem;
@@ -166,36 +166,6 @@ input[type=text]:not(.ip-octets), input[type=url], input[type=email], input[type
   white-space: nowrap;
   border: 0;
 }
-.host-port-field { margin-bottom: 0.75rem; }
-.host-port-label { display: block; margin-bottom: 0.35rem; font-weight: 500; }
-.host-port-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 0.65rem;
-}
-.host-port-ip, .host-port-port {
-  display: block;
-  margin-bottom: 0;
-  flex: 0 0 auto;
-}
-.host-port-field input.ip-octets {
-  width: 35ch;
-  min-width: 35ch;
-  max-width: 100%;
-  box-sizing: border-box;
-  font-family: ui-monospace, Consolas, monospace;
-  margin-top: 0;
-}
-.host-port-field input.port-field {
-  width: 25ch;
-  min-width: 25ch;
-  max-width: 100%;
-  box-sizing: border-box;
-  font-family: ui-monospace, Consolas, monospace;
-  margin-top: 0;
-}
-.host-port-field .muted.small { margin: 0.35rem 0 0; }
 ol.recovery-questions-list {
   margin: 0.75rem 0 1rem;
   padding-left: 1.25rem;
