@@ -179,13 +179,13 @@ input[type=text], input[type=url], input[type=email], input[type=password], inpu
   margin-bottom: 0;
 }
 input.ip-octets {
-  width: 15ch;
+  width: 21ch;
   max-width: 100%;
   font-family: ui-monospace, Consolas, monospace;
   margin-top: 0;
 }
 input.port-field {
-  width: 5ch;
+  width: 11ch;
   max-width: 100%;
   font-family: ui-monospace, Consolas, monospace;
   margin-top: 0;
