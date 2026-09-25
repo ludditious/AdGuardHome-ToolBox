@@ -146,7 +146,7 @@ button.copy-cmd:hover { border-color: var(--accent); color: var(--accent); }
 }
 .narrow { max-width: 420px; }
 label { display: block; margin-bottom: 0.75rem; }
-input[type=text], input[type=url], input[type=email], input[type=password], input[type=number] {
+input[type=text]:not(.ip-octets), input[type=url], input[type=email], input[type=password], input[type=number]:not(.port-field) {
   width: 100%;
   margin-top: 0.25rem;
   padding: 0.5rem;
@@ -177,16 +177,21 @@ input[type=text], input[type=url], input[type=email], input[type=password], inpu
 .host-port-ip, .host-port-port {
   display: block;
   margin-bottom: 0;
+  flex: 0 0 auto;
 }
-input.ip-octets {
-  width: 21ch;
+.host-port-field input.ip-octets {
+  width: 35ch;
+  min-width: 35ch;
   max-width: 100%;
+  box-sizing: border-box;
   font-family: ui-monospace, Consolas, monospace;
   margin-top: 0;
 }
-input.port-field {
-  width: 11ch;
+.host-port-field input.port-field {
+  width: 25ch;
+  min-width: 25ch;
   max-width: 100%;
+  box-sizing: border-box;
   font-family: ui-monospace, Consolas, monospace;
   margin-top: 0;
 }

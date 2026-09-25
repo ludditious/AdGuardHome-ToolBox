@@ -1,0 +1,14 @@
+---
+description: Never rename GHCR/Docker package or image slug without explicit user request
+alwaysApply: true
+---
+
+# GHCR / Docker package name — do not rename
+
+**Canonical image (fixed):** `ghcr.io/ludditious/adguardhome-toolbox:latest`
+
+- **Never** change the GHCR package slug, Docker image name, or publish target (e.g. do not introduce `adguard-home-toolbox` or other variants) unless the user **explicitly** asks to rename it.
+- If GHCR is linked to the wrong GitHub repo, fix **Package settings → Repository source** (or ask the user). Do not rename the package as a workaround.
+- Container name in examples remains **`adguardhome-toolbox`** unless the user asks otherwise.
+
+When editing CI, docs, Update/About UI, or compose files, keep **`adguardhome-toolbox`** (no extra hyphens in the package slug).
