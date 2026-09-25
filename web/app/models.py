@@ -53,6 +53,9 @@ class User(Base):
     run_logs: Mapped[list[SyncRunLog]] = relationship(back_populates="user")
     source_backups: Mapped[list[SourceBackup]] = relationship(back_populates="user")
     toolbox_backups: Mapped[list[ToolBoxBackup]] = relationship(back_populates="user")
+    source_backup_settings: Mapped[SourceBackupSettings | None] = relationship(
+        back_populates="user", uselist=False
+    )
 
 
 class SourceServer(Base):
@@ -145,6 +148,18 @@ class ToolBoxBackup(Base):
     user: Mapped[User] = relationship(back_populates="toolbox_backups")
 
 
+class SourceBackupSettings(Base):
+    __tablename__ = "source_backup_settings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), unique=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    retention_days: Mapped[int] = mapped_column(Integer, default=30)
+    last_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    user: Mapped[User] = relationship(back_populates="source_backup_settings")
+
+
 class SourceBackup(Base):
     __tablename__ = "source_backups"
 
@@ -154,6 +169,7 @@ class SourceBackup(Base):
     source_url: Mapped[str] = mapped_column(String(512), default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
     payload_json: Mapped[str] = mapped_column(Text)
+    is_automated: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
 
     user: Mapped[User] = relationship(back_populates="source_backups")
 

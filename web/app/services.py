@@ -24,9 +24,12 @@ _cron_tick_lock = threading.Lock()
 
 from .auth_constants import DEFAULT_PASSWORD, DEFAULT_USERNAME
 from .crypto import encrypt
-from .cron_logic import users_due_for_sync
+from .backup_retention import DEFAULT_RETENTION_DAYS
+from .backup_service import purge_expired_automated_backups, run_automated_source_backup
+from .cron_logic import users_due_for_auto_backup, users_due_for_sync
 from .models import (
     CronTickLog,
+    SourceBackupSettings,
     SourceServer,
     SyncOptions,
     SyncRunLog,
@@ -114,6 +117,11 @@ def ensure_user_defaults(db: Session, user: User) -> None:
         user.sync_options = SyncOptions(user_id=user.id)
     if user.schedule is None:
         user.schedule = SyncSchedule(user_id=user.id)
+    if user.source_backup_settings is None:
+        user.source_backup_settings = SourceBackupSettings(
+            user_id=user.id,
+            retention_days=DEFAULT_RETENTION_DAYS,
+        )
     db.commit()
 
 
@@ -124,7 +132,8 @@ def run_cron_tick(db: Session) -> dict[str, int]:
 
 
 def _run_cron_tick_unlocked(db: Session) -> dict[str, int]:
-    due = users_due_for_sync(db)
+    now = utcnow()
+    due = users_due_for_sync(db, now)
     ran = 0
     errors = 0
     for user in due:
@@ -132,12 +141,38 @@ def _run_cron_tick_unlocked(db: Session) -> dict[str, int]:
         ran += 1
         if log.exit_code != 0:
             errors += 1
+
+    backup_due = users_due_for_auto_backup(db, now)
+    backups_ran = 0
+    backup_errors = 0
+    for user in backup_due:
+        ensure_user_defaults(db, user)
+        settings = user.source_backup_settings
+        assert settings is not None
+        try:
+            run_automated_source_backup(db, user)
+            settings.last_run_at = now
+            db.commit()
+            backups_ran += 1
+        except Exception:
+            backup_errors += 1
+            db.rollback()
+
+    for user in db.query(User).all():
+        if not user.source_backup_settings or not user.source_backup_settings.enabled:
+            continue
+        purge_expired_automated_backups(db, user, user.source_backup_settings.retention_days)
+
+    parts: list[str] = []
     if ran:
-        detail = f"Ran {ran} scheduled sync(s); {errors} failed."
-    elif due:
-        detail = "Users were due but none ran (unexpected)."
+        parts.append(f"Ran {ran} scheduled sync(s); {errors} failed.")
     else:
-        detail = "No sync due this minute (schedule off, wrong day, or interval not elapsed)."
+        parts.append("No sync due this minute.")
+    if backups_ran:
+        parts.append(f"Automated backup(s): {backups_ran}; {backup_errors} failed.")
+    elif backup_due:
+        parts.append("Automated backup due but none created.")
+    detail = " ".join(parts)
     tick = CronTickLog(
         users_due=len(due),
         syncs_ran=ran,

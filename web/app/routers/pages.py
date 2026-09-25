@@ -24,7 +24,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from ..config import get_settings
-from ..version import APP_NAME, APP_REVISION, read_bundled_version
+from ..version import APP_NAME, read_bundled_revision, read_bundled_version
 from ..update_checker import (
     apply_update_session,
     check_for_update,
@@ -34,6 +34,7 @@ from ..database import get_db
 from ..deps import get_current_user
 from agsync.client import AdGuardError
 
+from ..backup_retention import BACKUP_RETENTION_OPTIONS, retention_days_from_form
 from ..backup_service import (
     create_source_backup,
     delete_backup,
@@ -67,14 +68,28 @@ router = APIRouter()
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent.parent / "templates"))
 
 
-def _list_backups(db: Session, user: User) -> list[SourceBackup]:
-    return (
-        db.query(SourceBackup)
-        .filter(SourceBackup.user_id == user.id)
-        .order_by(SourceBackup.created_at.desc())
-        .limit(12)
+def _paginated_source_backups(
+    db: Session, user: User, *, is_automated: bool, page: int, per_page: int = 10
+) -> tuple[list[SourceBackup], int, int, int]:
+    from ..backup_retention import BACKUPS_PER_PAGE
+
+    per_page = per_page or BACKUPS_PER_PAGE
+    page = max(1, page)
+    base = db.query(SourceBackup).filter(
+        SourceBackup.user_id == user.id,
+        SourceBackup.is_automated.is_(is_automated),
+    )
+    total = base.count()
+    total_pages = max(1, (total + per_page - 1) // per_page)
+    if page > total_pages:
+        page = total_pages
+    rows = (
+        base.order_by(SourceBackup.created_at.desc())
+        .offset((page - 1) * per_page)
+        .limit(per_page)
         .all()
     )
+    return rows, page, total_pages, total
 
 
 def _list_toolbox_backups(db: Session, user: User) -> list[ToolBoxBackup]:
@@ -94,8 +109,8 @@ def _ctx(request: Request, user: User, db: Session | None = None, **extra):
         "user": user,
         "app_title": settings.app_title,
         "app_name": APP_NAME,
-        "app_revision": APP_REVISION,
         "app_version": read_bundled_version(),
+        "app_revision": read_bundled_revision(),
         "current_username": user.username,
         "update_available": session_update_available(request.session),
         **extra,
@@ -152,8 +167,29 @@ def settings_page(
             recovery_reenter=recovery_reenter,
             recovery_configured=user_has_recovery(user),
             check_updates_on_login=user.check_updates_on_login,
+            auto_backup_enabled=user.source_backup_settings.enabled if user.source_backup_settings else False,
+            auto_backup_retention_days=(
+                user.source_backup_settings.retention_days if user.source_backup_settings else 30
+            ),
+            backup_retention_options=BACKUP_RETENTION_OPTIONS,
         ),
     )
+
+
+@router.post("/settings/automated-backup")
+def settings_automated_backup(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    auto_backup_enabled: str | None = Form(None),
+    auto_backup_retention: str = Form("30"),
+):
+    ensure_user_defaults(db, user)
+    settings = user.source_backup_settings
+    assert settings is not None
+    settings.enabled = auto_backup_enabled == "on"
+    settings.retention_days = retention_days_from_form(auto_backup_retention)
+    db.commit()
+    return RedirectResponse("/settings?account_ok=1&msg=Automated%20backup%20settings%20saved", status_code=303)
 
 
 @router.post("/settings/account/password")
@@ -639,10 +675,18 @@ def backups_page(
     db: Session = Depends(get_db),
     ok: str | None = None,
     msg: str | None = None,
+    manual_page: int = 1,
+    auto_page: int = 1,
 ):
     ensure_user_defaults(db, user)
     message = msg
     message_class = "notice notice-ok" if ok == "1" else "notice notice-err" if ok == "0" else "notice"
+    manual_backups, manual_page, manual_pages, manual_total = _paginated_source_backups(
+        db, user, is_automated=False, page=manual_page
+    )
+    auto_backups, auto_page, auto_pages, auto_total = _paginated_source_backups(
+        db, user, is_automated=True, page=auto_page
+    )
     return templates.TemplateResponse(
         request,
         "backups.html",
@@ -652,7 +696,14 @@ def backups_page(
             db,
             message=message,
             message_class=message_class,
-            footer_backups=_list_backups(db, user),
+            manual_backups=manual_backups,
+            manual_page=manual_page,
+            manual_pages=manual_pages,
+            manual_total=manual_total,
+            auto_backups=auto_backups,
+            auto_page=auto_page,
+            auto_pages=auto_pages,
+            auto_total=auto_total,
             toolbox_backups=_list_toolbox_backups(db, user),
         ),
     )

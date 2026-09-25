@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import json
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from urllib.parse import urlparse
 
 from sqlalchemy.orm import Session
@@ -66,7 +66,7 @@ def _source_client(db: Session, user: User) -> AdGuardClient:
     return client
 
 
-def create_source_backup(db: Session, user: User) -> SourceBackup:
+def create_source_backup(db: Session, user: User, *, is_automated: bool = False) -> SourceBackup:
     src = user.source
     assert src is not None
     client = _source_client(db, user)
@@ -78,6 +78,7 @@ def create_source_backup(db: Session, user: User) -> SourceBackup:
         name=name,
         source_url=client.base_url,
         payload_json=json.dumps(doc, ensure_ascii=False),
+        is_automated=is_automated,
     )
     db.add(row)
     db.commit()
@@ -118,3 +119,28 @@ def delete_backup(db: Session, user: User, backup_id: int) -> None:
         raise ValueError("Backup not found.")
     db.delete(row)
     db.commit()
+
+
+def purge_expired_automated_backups(db: Session, user: User, retention_days: int) -> int:
+    days = max(1, int(retention_days or 1))
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+    q = (
+        db.query(SourceBackup)
+        .filter(
+            SourceBackup.user_id == user.id,
+            SourceBackup.is_automated.is_(True),
+            SourceBackup.created_at < cutoff,
+        )
+    )
+    removed = q.count()
+    q.delete(synchronize_session=False)
+    db.commit()
+    return removed
+
+
+def run_automated_source_backup(db: Session, user: User) -> SourceBackup:
+    row = create_source_backup(db, user, is_automated=True)
+    settings = user.source_backup_settings
+    if settings:
+        purge_expired_automated_backups(db, user, settings.retention_days)
+    return row

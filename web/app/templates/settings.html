@@ -61,6 +61,33 @@
 
 <section class="card">
 
+  <h2 class="footer-heading">Automated source backup</h2>
+
+  <form method="post" action="/settings/automated-backup">
+
+    <label class="check">
+      <input type="checkbox" name="auto_backup_enabled" {% if auto_backup_enabled %}checked{% endif %}>
+      Enable daily automated backup of AdGuard Home source settings
+    </label>
+
+    <label>Retention period
+      <select name="auto_backup_retention">
+        {% for form_val, days, label in backup_retention_options %}
+        <option value="{{ form_val }}" {% if auto_backup_retention_days == days %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+
+    <p class="muted small">Runs on the same cron schedule as sync (every minute check; at most one automated backup per 24 hours). Only automated backups older than the retention period are removed. Manual backups on the Backup tab are never removed automatically.</p>
+
+    <button type="submit">Save automated backup settings</button>
+
+  </form>
+
+</section>
+
+<section class="card">
+
   <h2 class="footer-heading">Check for updates</h2>
 
   <form method="post" action="/settings/updates">

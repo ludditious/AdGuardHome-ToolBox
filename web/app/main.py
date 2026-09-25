@@ -23,14 +23,14 @@ from starlette.middleware.sessions import SessionMiddleware
 from .config import get_settings
 from .database import SessionLocal, init_db
 from .scheduler import start_background_scheduler
-from .version import APP_NAME, APP_REVISION, read_bundled_version
+from .version import APP_NAME, read_bundled_revision, read_bundled_version
 from .routers import auth, internal, pages
 from .services import ensure_single_user
 
 
 def create_app() -> FastAPI:
     settings = get_settings()
-    app = FastAPI(title=APP_NAME, version=APP_REVISION)
+    app = FastAPI(title=APP_NAME, version=read_bundled_version())
 
     app.add_middleware(
         SessionMiddleware,
@@ -61,7 +61,7 @@ def create_app() -> FastAPI:
             "status": "ok",
             "service": "adguardhome-toolbox",
             "name": APP_NAME,
-            "revision": APP_REVISION,
+            "revision": read_bundled_revision(),
             "version": read_bundled_version(),
         }
 

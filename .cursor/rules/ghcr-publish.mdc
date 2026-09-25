@@ -11,7 +11,7 @@ CI: `.github/workflows/docker-publish.yml` (push to `main` or `workflow_dispatch
 
 When the user asks for a **new build**, **publish**, **release**, **push to GitHub**, or **new container**:
 
-1. Finish code changes; bump `APP_REVISION` in `web/app/version.py` when UI/docs/release notes change.
+1. Finish code changes; UI shows **Version** from `version.txt` and **Revised** as `YYYY-MM-DD-<build#>` (same increment as the image; no letter suffix).
 2. Commit on `main` (author: ludditious / `github.com@ludditious.com` when using `-c user.name` / `-c user.email`).
 3. Publish from repo root: `.\scripts\publish-docker.ps1`  
    - Uses `LUDDITIOUS_GITHUB_PAT` or gitignored `Github-Access-Token.txt` (never commit tokens).

@@ -13,12 +13,16 @@
 #     You should have received a copy of the GNU Affero General Public License
 #     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-"""App metadata — update APP_REVISION when docs or release notes change."""
+"""App metadata — image version comes from version.txt (CI); revised uses the same build number."""
 
+from __future__ import annotations
+
+import re
 from pathlib import Path
 
 APP_NAME = "AdGuard Home ToolBox"
-APP_REVISION = "2026-09-25b"
+
+_VERSION_FILE_PATTERN = re.compile(r"^(\d{4})\.(\d{2})\.(\d{2})-(\d+)$")
 
 
 def read_bundled_version() -> str:
@@ -31,3 +35,16 @@ def read_bundled_version() -> str:
             if text:
                 return text
     return "unknown"
+
+
+def revision_from_version(version: str) -> str:
+    """Map CI version 2026.09.25-28 → revised label 2026-09-25-28 (no letter suffix)."""
+    v = (version or "").strip()
+    m = _VERSION_FILE_PATTERN.match(v)
+    if m:
+        return f"{m.group(1)}-{m.group(2)}-{m.group(3)}-{m.group(4)}"
+    return v or "unknown"
+
+
+def read_bundled_revision() -> str:
+    return revision_from_version(read_bundled_version())

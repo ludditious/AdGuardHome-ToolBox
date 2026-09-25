@@ -21,7 +21,8 @@ from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
-from .models import DAY_KEYS, SyncSchedule, User
+from .backup_retention import AUTO_BACKUP_INTERVAL_MINUTES
+from .models import DAY_KEYS, SourceBackupSettings, SyncSchedule, User
 
 _WEEKDAY = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 
@@ -46,6 +47,31 @@ def schedule_due(schedule: SyncSchedule, now: datetime | None = None) -> bool:
         last = last.replace(tzinfo=timezone.utc)
     elapsed_min = (now - last).total_seconds() / 60.0
     return elapsed_min >= interval
+
+
+def auto_backup_due(settings: SourceBackupSettings, now: datetime | None = None) -> bool:
+    if not settings.enabled:
+        return False
+    now = now or datetime.now(timezone.utc)
+    interval = max(1, AUTO_BACKUP_INTERVAL_MINUTES)
+    if settings.last_run_at is None:
+        return True
+    last = settings.last_run_at
+    if last.tzinfo is None:
+        last = last.replace(tzinfo=timezone.utc)
+    elapsed_min = (now - last).total_seconds() / 60.0
+    return elapsed_min >= interval
+
+
+def users_due_for_auto_backup(db: Session, now: datetime | None = None) -> list[User]:
+    now = now or datetime.now(timezone.utc)
+    due: list[User] = []
+    for user in db.query(User).all():
+        if not user.source_backup_settings:
+            continue
+        if auto_backup_due(user.source_backup_settings, now):
+            due.append(user)
+    return due
 
 
 def users_due_for_sync(db: Session, now: datetime | None = None) -> list[User]:
