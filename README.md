@@ -1,107 +1,86 @@
-# AdGuard Home ToolBox (1 → many)
+# AdGuard Home ToolBox
 
-Copies **settings, block lists, custom rules, DNS options, rewrites, clients, and blocked services** from one **source** AdGuard Home instance to **many targets** using the official HTTP API (`/control/...`).
+**AdGuard Home ToolBox** syncs AdGuard Home configuration from one **source** instance to many **targets**—on your LAN or over the internet—using the official HTTP API (`/control/...`).
 
-Includes a **Windows desktop GUI**, a **Dockerized multi-user web app** (`web/`), and an optional **standalone `.exe`** build.
+It fills the gap where AdGuard Home has no single “export everything and clone to another host” workflow: filtering, lists, custom rules, DNS options, rewrites, clients, blocked services, and related settings can be pushed from a golden source to edge nodes, lab copies, or remote installs.
 
-## What AdGuard Home is
+The project includes:
 
-[AdGuard Home](https://github.com/AdguardTeam/AdGuardHome) is a network-wide DNS sinkhole (like Pi-hole): block lists, custom filtering rules, upstream DNS, rewrites, per-client settings, optional DHCP, etc.
+- **Docker web app** (recommended for servers) — browser UI, cron scheduling, backups, settings
+- **Windows desktop GUI** — same sync engine, local JSON settings, Windows Task Scheduler
+- **CLI** — `python -m agsync` with YAML config for scripts and automation
 
-There is still **no full “export everything” button** in the UI for cloning to another host; this tool fills that gap via the API.
+**GitHub:** [ludditious/AdGuardHome-ToolBox](https://github.com/ludditious/AdGuardHome-ToolBox)  
+**Container image:** `ghcr.io/ludditious/adguardhome-toolbox:latest`
 
-## Requirements
+---
 
-- Python 3.10+
-- Source and targets reachable from the machine running the sync
-- Same admin credentials pattern (each host can have its own user/password in config)
-- AdGuard Home v0.107+ (typical current installs)
+## Docker web app — features
 
-## Setup
+Run the published image or build from this repo ([web/README.md](web/README.md) for pull, compose, and GHCR details).
 
-```powershell
-cd AdGuardHome-ToolBox
-python -m venv .venv
-.\.venv\Scripts\activate
-pip install -r requirements.txt
-copy config.example.yaml config.yaml
-# Edit config.yaml
-```
+### Sync
 
-## Web app (Docker, Linux)
+| Area | What you can do |
+|------|------------------|
+| **Dashboard** | Run **Sync now**; see recent run results |
+| **Source** | One enabled source: **IPv4 + admin port** (`http://` is assumed), username/password, **Test connection** |
+| **Targets** | Named targets with the same addressing; enable/disable per server; test each |
+| **Options** | Choose what to sync (DNS, lists, rules, rewrites, clients, blocked services, parental/safe search); TLS verify; refresh lists after sync; **dry run** |
+| **Schedule** | Built-in **cron** (checks every minute, UTC): interval in minutes or hours, days Sun–Sat; automatic sync when due |
+| **Log** | Sync history (manual, cron, etc.); clear log |
 
-See **[web/README.md](web/README.md)** — multi-user UI, Sun–Sat schedule + interval, cron-driven sync, activity log.
+The sync engine applies sensible **DNS payload sanitization** when pushing to targets (e.g. skips private reverse-DNS upstreams and other read-only or environment-specific fields) so cloud or remote targets are less likely to reject config.
+
+### Backup & restore
+
+| Area | What you can do |
+|------|------------------|
+| **AdGuard Home (source)** | **Manual backups** of all source settings (no AdGuard login secrets in the file); **automated daily backups** when enabled in Settings; separate lists with **Previous / Next** paging |
+| **Retention** | Automated backups roll off after the period you choose (1 day through 120 days); **manual backups are never deleted automatically** |
+| **Actions** | Download JSON, restore to source, delete; restore from uploaded file |
+| **ToolBox configuration** | Backup/restore app config (source, targets, sync options, schedule, encrypted secrets) so a new container volume can recover saved AdGuard passwords and layout |
+
+### Settings & account
+
+| Area | What you can do |
+|------|------------------|
+| **Password** | Change the ToolBox login password |
+| **Password recovery** | Three security questions for **Forgot password**; answers stored **encrypted at rest** and visible on Settings for review |
+| **Automated source backup** | Enable/disable daily automated AdGuard Home source backup; retention dropdown (1 day → 120 days) |
+| **Updates** | Optional check on sign-in against GitHub `version.txt` for a newer Docker image; **Update** link in the nav when a newer build is available |
+
+### UI & ops
+
+- **Light / dark** theme (persisted in the browser)
+- **About** — version and revised build id from the image; links to repo, package, and licensing
+- **Self-contained container** — `SECRET_KEY` and `CRON_SECRET` generated on first start under `/data`; SQLite database on the volume
+- **Health** — `GET /health` for probes
+
+Default ToolBox login after first deploy is documented on the sign-in page until you change the password.
+
+---
+
+## Quick start (Docker)
 
 ```bash
-docker compose -f web/docker-compose.yml up -d --build
+docker pull ghcr.io/ludditious/adguardhome-toolbox:latest
+
+docker run -d --name adguardhome-toolbox \
+  -p 8080:8080 \
+  -v adguardhome-toolbox-data:/data \
+  --restart unless-stopped \
+  ghcr.io/ludditious/adguardhome-toolbox:latest
 ```
 
-No `.env` required — secrets are created automatically on first start (stored in the Docker volume).
+Open the UI on port **8080** (or map another host port). Back up the **`/data`** volume.
 
-**GitHub image:** push to `main` triggers [GHCR publish](.github/workflows/docker-publish.yml). See [web/README.md](web/README.md) for `docker pull` / public package settings.
+---
 
-## Windows GUI (recommended)
+## What is synced (API overview)
 
-```powershell
-cd AdGuardHome-ToolBox
-pip install -r requirements.txt
-python run_app.py
-```
-
-Or double-click **`Launch GUI.bat`** (uses `pythonw` so no console window).
-
-Settings are stored in **`%LOCALAPPDATA%\AGHomeSync\settings.json`** (passwords in plain text — restrict PC access or encrypt the folder if needed).
-
-Tabs:
-
-- **Source** — URL, username, password, enabled, test connection  
-- **Targets** — add / edit / delete, enable/disable per server  
-- **Options** — what to sync, dry run, TLS verify  
-- **Schedule** — every N **minutes** or **hours**, **daily** at a time, or **weekly**; creates/removes a Windows task named `AGHomeSync`  
-- **Sync** — save and run now  
-- **Log** — history of each sync and connection test, with **Clear log**  
-
-Activity is stored in **`%LOCALAPPDATA%\AGHomeSync\activity.log`**.
-
-### Standalone `.exe`
-
-```powershell
-.\build_exe.ps1
-```
-
-Run **`dist\AGHomeSync.exe`**. Copy it anywhere; settings still use `%LOCALAPPDATA%\AGHomeSync`. If task creation fails with “access denied”, run the app once as Administrator to register the schedule.
-
-## CLI usage
-
-Dry run (log actions only):
-
-```yaml
-options:
-  dry_run: true
-```
-
-Sync all targets:
-
-```powershell
-python -m agsync -c config.yaml
-```
-
-Export source snapshot for inspection:
-
-```powershell
-python -m agsync -c config.yaml --export-only snapshot.json
-```
-
-Sync one target by name:
-
-```powershell
-python -m agsync -c config.yaml --target basement
-```
-
-## What is synced
-
-| Area | API |
-|------|-----|
+| Area | API (typical) |
+|------|----------------|
 | Filtering on/off + update interval | `/filtering/config` |
 | Block/allow list subscriptions | add/remove/set URL |
 | Custom rules | `/filtering/set_rules` |
@@ -111,29 +90,68 @@ python -m agsync -c config.yaml --target basement
 | Blocked services | `/blocked_services/set` |
 | Parental / safe browsing / safe search | enable + settings |
 
-## Not synced (by design)
+### Usually not synced (per host)
 
-These are usually **per machine** — change manually on each host if needed:
-
-- Listen address / web port (`bind_host`, `port`)
-- TLS certificates and DoH/DoT hostnames
-- DHCP interface binding
-- Query log / stats history
-- Admin password (unless you change it yourself on each node)
-
-## Scheduling
-
-Use the GUI **Schedule** tab on Windows, or cron on Linux with `python -m agsync -c config.yaml`.
-
-## Similar projects
-
-- [adguardhome-sync](https://github.com/bakito/adguardhome-sync) (Go, Docker) — production-grade; this repo is a simple, editable Python alternative.
-
-## Security
-
-- Store `config.yaml` outside git; it contains passwords.
-- Prefer HTTPS on AdGuard Home admin UI in production; set `verify_tls: true` when using valid certs.
+Listen address, web port, TLS/DoH/DoT, DHCP binding, query stats history, and AdGuard admin passwords (unless you set them on each node yourself).
 
 ---
 
-*Revised: 2026-09-21*
+## Windows desktop GUI
+
+```powershell
+cd AdGuardHome-ToolBox
+pip install -r requirements.txt
+python run_app.py
+```
+
+Or **`Launch GUI.bat`**. Settings: **`%LOCALAPPDATA%\AGHomeSync\settings.json`**.
+
+Tabs: Source, Targets, Options, Schedule (Windows task `AGHomeSync`), Sync, Log.
+
+### Standalone `.exe`
+
+```powershell
+.\build_exe.ps1
+```
+
+Run **`dist\AGHomeSync.exe`**.
+
+---
+
+## CLI (YAML config)
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\activate
+pip install -r requirements.txt
+copy config.example.yaml config.yaml
+python -m agsync -c config.yaml
+```
+
+Dry run, export-only, and single-target flags are supported; see `config.example.yaml`.
+
+---
+
+## Requirements
+
+- Python **3.10+** (local GUI/CLI); **3.12** in the official Docker image
+- AdGuard Home **v0.107+** on source and targets
+- Network path from the ToolBox host/container to each AdGuard Home **admin UI** port
+
+---
+
+## Security notes
+
+- Protect `config.yaml` and the Docker **`/data`** volume (database, secrets, backups).
+- Prefer HTTPS on AdGuard Home in production; enable **Verify TLS** in sync options when certificates are valid.
+- ToolBox backup files contain sensitive configuration—store them privately.
+
+---
+
+## Similar projects
+
+- [adguardhome-sync](https://github.com/bakito/adguardhome-sync) (Go) — mature Docker-oriented sync; this repo is a Python alternative you can extend (web UI, backups, scheduling).
+
+---
+
+*Revised: 2026-09-26*

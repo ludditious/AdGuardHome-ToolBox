@@ -1,28 +1,24 @@
 # AdGuard Home ToolBox — Web (Docker)
 
-Multi-user web UI to sync one **source** AdGuard Home instance to many **targets**. Uses the shared Python package in `../agsync` (same sync engine as the Windows desktop app).
+Browser UI and API for syncing one **source** AdGuard Home to many **targets**. Uses the shared Python package in `../agsync` (same engine as the Windows desktop app).
 
-**Self-contained:** no `.env` file required. On first start the container generates `SECRET_KEY` and `CRON_SECRET` and stores them in the `/data` volume (`/data/app-secrets.env`).
+**Self-contained:** no `.env` required. On first start the container generates `SECRET_KEY` and `CRON_SECRET` in `/data/app-secrets.env`.
 
-## Publish the image on GitHub (one-time setup)
+For a full feature list (backups, schedule, settings, updates), see the [repository README](../README.md).
 
-GitHub repo: **ludditious/AdGuardHome-ToolBox** (source + CI). GHCR package **`adguardhome-toolbox`** (`ghcr.io/ludditious/adguardhome-toolbox`).
+## Image and repo
 
-**`.github/workflows/docker-publish.yml`** builds and pushes that image on push to **`main`** or tag **`v*`**.
+| | |
+|--|--|
+| **GitHub** | [ludditious/AdGuardHome-ToolBox](https://github.com/ludditious/AdGuardHome-ToolBox) |
+| **GHCR package** | `adguardhome-toolbox` |
+| **Pull** | `ghcr.io/ludditious/adguardhome-toolbox:latest` |
 
-1. **Commit and push** the repo to GitHub (including the `web/` and `agsync/` folders and the workflow file).
-2. Open **Actions** on GitHub and confirm **Publish Docker image** succeeds.
-3. Open **Packages** → **`AdGuardHome-ToolBox`** → **Package settings** → **Public** if you want anonymous `docker pull`.
+CI: [`.github/workflows/docker-publish.yml`](../.github/workflows/docker-publish.yml) builds and pushes on push to **`main`** or tag **`v*`**. Each build writes **`version.txt`** (e.g. `2026.09.25-30`); the UI shows that as **Version** and **Revised** `YYYY-MM-DD-<build#>`.
 
-Image name (lowercase):
+Make the package **Public** under **Packages → adguardhome-toolbox → Package settings** if you want anonymous `docker pull`.
 
-```text
-ghcr.io/ludditious/adguardhome-toolbox:latest
-```
-
-## Pull and run (for you or anyone else)
-
-No clone and no `.env` required:
+## Pull and run
 
 ```bash
 docker pull ghcr.io/ludditious/adguardhome-toolbox:latest
@@ -34,35 +30,54 @@ docker run -d --name adguardhome-toolbox \
   ghcr.io/ludditious/adguardhome-toolbox:latest
 ```
 
-### Hostnames / DNS
-
-The app resolves hostnames with **system DNS** (`getaddrinfo` and `/etc/resolv.conf` in the container). It does **not** store DNS server addresses in the database.
-
-If resolution fails inside Docker, configure the **container/host resolver**, or use optional env:
-
-- **`CUSTOM_DNS`** — extra nameservers for the container (ops config, not saved in the app)
-- **`AGH_SYNC_HOST_ALIASES`** — `hostname:ip` pairs to skip DNS for specific names
-- **Connect using IP** on the Source form (optional)
-
-Optional **`AGH_SYNC_DNS_FALLBACK`** only if you explicitly set it (public resolvers are never added by default).
-
-Or with compose from this repo:
+Compose from this repo:
 
 ```bash
 docker compose -f web/docker-compose.pull.yml up -d
 ```
 
-Open **http://localhost:8080**, register, configure source/targets.
+Open **http://localhost:8080** (or your mapped port). Sign in, configure **Source** (IPv4 + port), **Targets**, **Options**, and **Schedule**.
 
-If the package is **private**, log in first:
+If the package is private:
 
 ```bash
 echo YOUR_GITHUB_PAT | docker login ghcr.io -u YOUR_GITHUB_USERNAME --password-stdin
 ```
 
-## Build locally (developers)
+## Source / target addressing
 
-From the **repository root** (build context must include `agsync/`):
+Connections use **`http://IP:port`** to the AdGuard Home **admin UI** (not DNS port 53). Hostnames are not required; use IPv4 and the port shown in AdGuard Home settings.
+
+### DNS inside the container
+
+Resolution uses the container’s resolver (`/etc/resolv.conf`). Optional environment (not stored in the app DB):
+
+| Variable | Purpose |
+|----------|---------|
+| **`CUSTOM_DNS`** | Extra nameservers for the container |
+| **`AGH_SYNC_HOST_ALIASES`** | `hostname:ip` pairs |
+| **`AGH_SYNC_DNS_FALLBACK`** | Only if you set it explicitly |
+
+Update checks can fall back to public DNS and then the source IP when reaching GitHub for `version.txt`.
+
+## Cron
+
+`web/cron/crontab` runs **`cron-tick.sh`** every minute, which POSTs to `/internal/cron/tick` with `CRON_SECRET`. That drives **scheduled sync** and **automated source backups** (when enabled under Settings).
+
+## Optional environment
+
+| Variable | Description |
+|----------|-------------|
+| `SECRET_KEY` | Override session + field encryption key |
+| `CRON_SECRET` | Override cron bearer token |
+| `DATABASE_URL` | Default SQLite at `/data/aghomesync.db` |
+| `PORT` | Default `8080` |
+
+Back up the **`/data`** volume (database, secrets, backup records).
+
+## Build locally
+
+From the **repository root** (context must include `agsync/` and `version.txt`):
 
 ```bash
 docker compose -f web/docker-compose.yml up -d --build
@@ -73,17 +88,6 @@ Or:
 ```bash
 docker build -t adguardhome-toolbox:latest .
 ```
-
-## Optional environment
-
-| Variable | Description |
-|----------|-------------|
-| `SECRET_KEY` | Override session + encryption key (otherwise auto-generated) |
-| `CRON_SECRET` | Override cron token (otherwise auto-generated) |
-| `ALLOW_REGISTRATION` | Legacy; registration is disabled (login only) |
-| `DATABASE_URL` | Default SQLite at `/data/aghomesync.db` |
-
-Back up the **`/data`** volume — it holds the database and generated secrets.
 
 ## Local dev (no Docker)
 
@@ -99,4 +103,4 @@ uvicorn app.main:app --reload --port 8080
 
 ---
 
-*Revised: 2026-09-21*
+*Revised: 2026-09-26*
