@@ -1,6 +1,6 @@
-# AdGuard Home ToolBox — Web (Docker)
+# AdGuard Home ToolBox, Web (Docker)
 
-Browser UI and API for syncing one **source** AdGuard Home to many **targets**. Uses the shared Python package in `../agsync` (same engine as the Windows desktop app).
+Browser UI and API for syncing one **source** AdGuard Home to many **targets**. Uses the shared Python package in `../agsync` (same sync engine as the CLI).
 
 **Self-contained:** no `.env` required. On first start the container generates `SECRET_KEY` and `CRON_SECRET` in `/data/app-secrets.env`.
 
@@ -14,7 +14,7 @@ For a full feature list (backups, schedule, settings, updates), see the [reposit
 | **GHCR package** | `adguardhome-toolbox` |
 | **Pull** | `ghcr.io/ludditious/adguardhome-toolbox:latest` |
 
-CI: [`.github/workflows/docker-publish.yml`](../.github/workflows/docker-publish.yml) builds and pushes on push to **`main`** or tag **`v*`**. Each build writes **`version.txt`** (e.g. `2026.09.25-30`); the UI shows that as **Version** and **Revised** `YYYY-MM-DD-<build#>`.
+CI: [`.github/workflows/docker-publish.yml`](../.github/workflows/docker-publish.yml) builds and pushes on push to **`main`** or tag **`v*`**. Each build writes **`version.txt`** (for example `2026.09.25-30`); the UI shows that as **Version** and **Revised** `YYYY-MM-DD-<build#>`.
 
 Make the package **Public** under **Packages → adguardhome-toolbox → Package settings** if you want anonymous `docker pull`.
 
@@ -50,7 +50,7 @@ Connections use **`http://IP:port`** to the AdGuard Home **admin UI** (not DNS p
 
 ### DNS inside the container
 
-Resolution uses the container’s resolver (`/etc/resolv.conf`). Optional environment (not stored in the app DB):
+Resolution uses the container resolver (`/etc/resolv.conf`). Optional environment (not stored in the app DB):
 
 | Variable | Purpose |
 |----------|---------|

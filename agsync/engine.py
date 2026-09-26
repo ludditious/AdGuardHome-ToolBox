@@ -230,7 +230,7 @@ def test_connection(
 
     if not url:
 
-        return _test_fail("Missing URL", "", username, "—", "Enter the AdGuard Home URL in the URL field.")
+        return _test_fail("Missing URL", "", username, "-", "Enter the AdGuard Home URL in the URL field.")
 
     if not (password or "").strip():
 
@@ -242,7 +242,7 @@ def test_connection(
 
             username,
 
-            "—",
+            "-",
 
             "Password field is empty and nothing is saved.",
 

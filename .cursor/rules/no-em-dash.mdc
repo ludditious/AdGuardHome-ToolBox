@@ -1,0 +1,12 @@
+---
+description: Do not use em-dash in user-facing prose (README, UI copy, release notes)
+alwaysApply: true
+---
+
+# No em-dash in user-facing text
+
+Do not use the em-dash character (U+2014) in README files, release notes, About text, or other user-visible copy.
+
+Use a hyphen `-`, a comma, or separate sentences instead.
+
+HTML page titles may use ` - ` between app name and page name (hyphen with spaces), not an em-dash.

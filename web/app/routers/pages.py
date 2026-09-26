@@ -128,7 +128,7 @@ def _save_password_hint(pw_status: str) -> str:
     if pw_status == "updated":
         return "Settings saved. Password stored."
     if pw_status == "missing":
-        return "Settings saved. No password stored yet — enter one and Save."
+        return "Settings saved. No password stored yet; enter one and Save."
     return "Settings saved. Password unchanged (left blank)."
 
 
@@ -518,7 +518,7 @@ def target_test(
             dns_servers=user_dns_servers(user),
         )
     ok = "1" if res.ok else "0"
-    detail = f"{res.title}: {res.message}" if not res.ok else f"{res.title} — {res.message.replace(chr(10), ' ')}"
+    detail = f"{res.title}: {res.message}" if not res.ok else f"{res.title}: {res.message.replace(chr(10), ' ')}"
     return RedirectResponse(
         f"/targets?test_id={target_id}&test_ok={ok}&test_msg={quote(detail)}",
         status_code=303,

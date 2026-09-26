@@ -68,14 +68,14 @@ def _connection_failure_message(api_root: str, exc: BaseException) -> str:
     ):
         reason = (
             "DNS lookup failed from this app (container or host). "
-            "Domain names and IPs are both supported — if the name works in your browser on the PC but not here, "
+            "Domain names and IPs are both supported. If the name works in your browser on the PC but not here, "
             "set Source DNS servers or container CUSTOM_DNS to your internal DNS, "
             "set AGH_SYNC_HOST_ALIASES=hostname:ip, or use Connect using IP on the Source form."
         )
     elif "connection refused" in low:
-        reason = "Connection refused — nothing is listening on that host and port (wrong port, AdGuard Home stopped, or firewalled)."
+        reason = "Connection refused: nothing is listening on that host and port (wrong port, AdGuard Home stopped, or firewalled)."
     elif "timed out" in low or "timeout" in low:
-        reason = "Timed out — host unreachable or blocked by a firewall."
+        reason = "Timed out: host unreachable or blocked by a firewall."
     elif "network is unreachable" in low:
         reason = "Network unreachable from this machine (routing or VPN issue)."
     else:
@@ -102,7 +102,7 @@ def normalize_base_url(url: str) -> str:
     host_part = host_part.split("/", 1)[0]
     if host_part.startswith("["):
         if "]" not in host_part:
-            raise AdGuardError("Invalid IPv6 URL — use http://[address]:port")
+            raise AdGuardError("Invalid IPv6 URL; use http://[address]:port")
     elif not host_part or host_part.startswith(":"):
         raise AdGuardError("URL is missing a hostname or IP address.")
 
@@ -432,7 +432,7 @@ def _message_from_body(r: requests.Response) -> str:
 
             return (
 
-                "Server returned a web page instead of JSON — wrong URL or not the AdGuard Home admin/API."
+                "Server returned a web page instead of JSON: wrong URL or not the AdGuard Home admin/API."
 
             )
 
@@ -472,7 +472,7 @@ def _parse_json(r: requests.Response, *, context: str, optional: bool = False) -
 
             raise AdGuardError(
 
-                f"{context}: response was HTML, not the AdGuard Home API — check the admin URL."
+                f"{context}: response was HTML, not the AdGuard Home API; check the admin URL."
 
             ) from e
 

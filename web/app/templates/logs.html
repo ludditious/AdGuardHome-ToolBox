@@ -22,9 +22,9 @@
 
     <strong>{{ log.started_at }}</strong>
 
-    — {{ log.trigger }}
+    - {{ log.trigger }}
 
-    — {% if log.exit_code == 0 %}<span class="ok">OK</span>{% else %}<span class="error">Failed</span>{% endif %}
+    - {% if log.exit_code == 0 %}<span class="ok">OK</span>{% else %}<span class="error">Failed</span>{% endif %}
 
   </header>
 

@@ -1,9 +1,9 @@
 ---
-description: AdGuard Home ToolBox — push to ludditious and publish GHCR image
+description: AdGuard Home ToolBox push to ludditious and publish GHCR image
 alwaysApply: true
 ---
 
-# AdGuard Home ToolBox — release / Docker publish
+# AdGuard Home ToolBox release / Docker publish
 
 Canonical repo: **ludditious/AdGuardHome-ToolBox**  
 GHCR image: **ghcr.io/ludditious/adguardhome-toolbox:latest** (never rename this slug unless the user explicitly asks — see `ghcr-package-name.mdc`).  

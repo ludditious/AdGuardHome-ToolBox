@@ -52,18 +52,7 @@ def main(argv: list[str] | None = None) -> int:
         metavar="NAME",
         help="Sync only the target with this name (from config)",
     )
-    parser.add_argument(
-        "--gui",
-        action="store_true",
-        help="Open the Windows desktop UI",
-    )
     args = parser.parse_args(argv)
-
-    if args.gui:
-        from .gui import run_gui
-
-        run_gui()
-        return 0
 
     cfg_path = Path(args.config)
     if not cfg_path.is_file():

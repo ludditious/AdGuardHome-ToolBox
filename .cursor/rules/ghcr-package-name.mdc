@@ -3,7 +3,7 @@ description: Never rename GHCR/Docker package or image slug without explicit use
 alwaysApply: true
 ---
 
-# GHCR / Docker package name — do not rename
+# GHCR / Docker package name: do not rename
 
 **Canonical image (fixed):** `ghcr.io/ludditious/adguardhome-toolbox:latest`
 

@@ -1,4 +1,4 @@
-AdGuard Home ToolBox — release notes
+AdGuard Home ToolBox release notes
 
 Version (see version.txt on main after CI)
 
