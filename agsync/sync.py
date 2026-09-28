@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .client import AdGuardClient
+from .client import AdGuardClient, AdGuardError
 from .sync_options import normalize_sync_options
 
 

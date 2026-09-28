@@ -39,6 +39,8 @@ from .models import (
     utcnow,
 )
 from .security import hash_password, verify_password
+from agsync.client import AdGuardError
+
 from .sync_bridge import run_user_sync
 
 
@@ -195,8 +197,11 @@ def execute_sync(db: Session, user: User, *, trigger: str) -> SyncRunLog:
     except ValueError as e:
         log.body = str(e)
         log.exit_code = 1
+    except AdGuardError as e:
+        log.body = f"AdGuard Home API error:\n{e}"
+        log.exit_code = 1
     except Exception as e:
-        log.body = f"Unexpected error: {e}"
+        log.body = f"Sync failed ({type(e).__name__}): {e}"
         log.exit_code = 1
     log.finished_at = datetime.now(timezone.utc)
     if user.schedule and trigger == "cron":

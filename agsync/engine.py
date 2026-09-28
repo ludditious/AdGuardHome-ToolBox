@@ -168,6 +168,12 @@ def run_sync(
 
             exit_code = 1
 
+        except Exception as e:
+
+            lines.append(f"  FAILED ({type(e).__name__}): {e}")
+
+            exit_code = 1
+
 
 
     return exit_code, lines
