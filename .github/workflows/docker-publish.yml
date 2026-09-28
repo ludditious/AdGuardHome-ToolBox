@@ -66,6 +66,21 @@ jobs:
           provenance: false
           sbom: false
 
+      - name: Link GHCR package to this repository
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const repoId = context.payload.repository.id;
+            try {
+              await github.request(
+                "PUT /user/packages/container/adguardhome-toolbox/repositories/{repository_id}",
+                { repository_id: repoId }
+              );
+              core.info("Linked adguardhome-toolbox to this repository.");
+            } catch (err) {
+              core.warning(`Could not link package (may already be linked): ${err.message}`);
+            }
+
       - uses: actions/upload-artifact@v4
         with:
           name: published-version-txt
@@ -86,6 +101,8 @@ jobs:
           path: .
 
       - name: Commit version.txt
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if [ -f published-version-txt/version.txt ]; then
             mv published-version-txt/version.txt version.txt
@@ -96,4 +113,5 @@ jobs:
           git add version.txt
           git diff --staged --quiet && exit 0
           git commit -m "chore: version.txt for image publish [skip ci]"
-          git push
+          git pull --rebase origin main
+          git push origin HEAD:main
