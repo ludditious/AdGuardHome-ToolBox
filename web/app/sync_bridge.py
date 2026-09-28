@@ -23,6 +23,7 @@ from sqlalchemy.orm import Session
 
 from agsync.dns_resolve import DEFAULT_PUBLIC_DNS
 from agsync.engine import run_sync, test_connection
+from agsync.sync_options import normalize_sync_options
 
 from .config import get_settings
 from .crypto import decrypt
@@ -54,30 +55,26 @@ def resolve_password(password_enc: str, form_password: str | None) -> tuple[str 
 
 def options_dict(opt: SyncOptions | None) -> dict[str, Any]:
     if not opt:
-        return {
-            "verify_tls": False,
-            "sync_dns": True,
-            "sync_filter_lists": True,
-            "sync_custom_rules": True,
-            "sync_rewrites": True,
-            "sync_clients": True,
-            "sync_blocked_services": True,
-            "sync_parental_safebrowsing_safesearch": True,
-            "refresh_lists_after_sync": True,
-            "dry_run": False,
-        }
-    return {
+        return normalize_sync_options(None)
+    raw = {
         "verify_tls": opt.verify_tls,
-        "sync_dns": opt.sync_dns,
-        "sync_filter_lists": opt.sync_filter_lists,
+        "sync_filtering_config": opt.sync_filtering_config,
+        "sync_block_lists": opt.sync_block_lists,
+        "sync_allow_lists": opt.sync_allow_lists,
         "sync_custom_rules": opt.sync_custom_rules,
+        "sync_dns": opt.sync_dns,
         "sync_rewrites": opt.sync_rewrites,
         "sync_clients": opt.sync_clients,
         "sync_blocked_services": opt.sync_blocked_services,
+        "sync_parental": opt.sync_parental,
+        "sync_safebrowsing": opt.sync_safebrowsing,
+        "sync_safesearch": opt.sync_safesearch,
+        "sync_filter_lists": opt.sync_filter_lists,
         "sync_parental_safebrowsing_safesearch": opt.sync_parental_safebrowsing_safesearch,
         "refresh_lists_after_sync": opt.refresh_lists_after_sync,
         "dry_run": opt.dry_run,
     }
+    return normalize_sync_options(raw)
 
 
 def source_host_ip(user: User) -> str:

@@ -6,7 +6,7 @@ alwaysApply: true
 # AdGuard Home ToolBox release / Docker publish
 
 Canonical repo: **ludditious/AdGuardHome-ToolBox**  
-GHCR image: **ghcr.io/ludditious/adguardhome-toolbox:latest** (never rename this slug unless the user explicitly asks — see `ghcr-package-name.mdc`).  
+GHCR image: **ghcr.io/ludditious/adguardhome-toolbox:latest** (never rename this slug unless the user explicitly asks; see `ghcr-package-name.mdc`).  
 CI: `.github/workflows/docker-publish.yml` (push to `main` or `workflow_dispatch`).
 
 When the user asks for a **new build**, **publish**, **release**, **push to GitHub**, or **new container**:
@@ -18,4 +18,4 @@ When the user asks for a **new build**, **publish**, **release**, **push to GitH
 4. Confirm **Publish Docker image** succeeds on GitHub Actions; report commit hash and new `version.txt` after the bot commit.
 5. All git author metadata and docs must use **ludditious** only.
 
-`paths-ignore: version.txt` on push — after CI-only version bumps, run `publish-docker.ps1` to dispatch the workflow again if needed.
+`paths-ignore: version.txt` on push: after CI-only version bumps, run `publish-docker.ps1` to dispatch the workflow again if needed.

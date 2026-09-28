@@ -374,8 +374,6 @@ class AdGuardClient:
 
         snap["safesearch"] = self.get("/safesearch/status")
 
-        snap["server_status"] = self.get("/status")
-
         return snap
 
 

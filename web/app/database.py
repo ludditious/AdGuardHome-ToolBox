@@ -124,6 +124,12 @@ def migrate_schema() -> None:
         ("target_servers", "connect_ip", "VARCHAR(128) NOT NULL DEFAULT ''"),
 
         ("sync_options", "dns_servers", "VARCHAR(512) NOT NULL DEFAULT ''"),
+        ("sync_options", "sync_filtering_config", "BOOLEAN NOT NULL DEFAULT 1"),
+        ("sync_options", "sync_block_lists", "BOOLEAN NOT NULL DEFAULT 1"),
+        ("sync_options", "sync_allow_lists", "BOOLEAN NOT NULL DEFAULT 1"),
+        ("sync_options", "sync_parental", "BOOLEAN NOT NULL DEFAULT 1"),
+        ("sync_options", "sync_safebrowsing", "BOOLEAN NOT NULL DEFAULT 1"),
+        ("sync_options", "sync_safesearch", "BOOLEAN NOT NULL DEFAULT 1"),
         ("users", "username", "VARCHAR(128) NOT NULL DEFAULT 'admin'"),
         ("users", "recovery_answer_1_hash", "TEXT NOT NULL DEFAULT ''"),
         ("users", "recovery_answer_2_hash", "TEXT NOT NULL DEFAULT ''"),

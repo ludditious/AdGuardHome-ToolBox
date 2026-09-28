@@ -552,29 +552,45 @@ def options_save(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
     verify_tls: str | None = Form(None),
+    sync_filtering_config: str | None = Form(None),
+    sync_block_lists: str | None = Form(None),
+    sync_allow_lists: str | None = Form(None),
     sync_dns: str | None = Form(None),
-    sync_filter_lists: str | None = Form(None),
     sync_custom_rules: str | None = Form(None),
     sync_rewrites: str | None = Form(None),
     sync_clients: str | None = Form(None),
     sync_blocked_services: str | None = Form(None),
-    sync_parental_safebrowsing_safesearch: str | None = Form(None),
+    sync_parental: str | None = Form(None),
+    sync_safebrowsing: str | None = Form(None),
+    sync_safesearch: str | None = Form(None),
     refresh_lists_after_sync: str | None = Form(None),
     dry_run: str | None = Form(None),
 ):
     ensure_user_defaults(db, user)
     opt = user.sync_options
     assert opt is not None
-    opt.verify_tls = verify_tls == "on"
-    opt.sync_dns = sync_dns == "on"
-    opt.sync_filter_lists = sync_filter_lists == "on"
-    opt.sync_custom_rules = sync_custom_rules == "on"
-    opt.sync_rewrites = sync_rewrites == "on"
-    opt.sync_clients = sync_clients == "on"
-    opt.sync_blocked_services = sync_blocked_services == "on"
-    opt.sync_parental_safebrowsing_safesearch = sync_parental_safebrowsing_safesearch == "on"
-    opt.refresh_lists_after_sync = refresh_lists_after_sync == "on"
-    opt.dry_run = dry_run == "on"
+
+    def _on(name: str | None) -> bool:
+        return name == "on"
+
+    opt.verify_tls = _on(verify_tls)
+    opt.sync_filtering_config = _on(sync_filtering_config)
+    opt.sync_block_lists = _on(sync_block_lists)
+    opt.sync_allow_lists = _on(sync_allow_lists)
+    opt.sync_custom_rules = _on(sync_custom_rules)
+    opt.sync_dns = _on(sync_dns)
+    opt.sync_rewrites = _on(sync_rewrites)
+    opt.sync_clients = _on(sync_clients)
+    opt.sync_blocked_services = _on(sync_blocked_services)
+    opt.sync_parental = _on(sync_parental)
+    opt.sync_safebrowsing = _on(sync_safebrowsing)
+    opt.sync_safesearch = _on(sync_safesearch)
+    opt.sync_filter_lists = opt.sync_block_lists and opt.sync_allow_lists
+    opt.sync_parental_safebrowsing_safesearch = (
+        opt.sync_parental and opt.sync_safebrowsing and opt.sync_safesearch
+    )
+    opt.refresh_lists_after_sync = _on(refresh_lists_after_sync)
+    opt.dry_run = _on(dry_run)
     db.commit()
     return RedirectResponse("/options", status_code=303)
 

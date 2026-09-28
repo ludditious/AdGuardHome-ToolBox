@@ -25,6 +25,8 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
+from agsync.sync_options import normalize_sync_options
+
 from .config import clear_settings_cache, get_settings
 from .crypto import decrypt
 from .models import TargetServer, ToolBoxBackup, User
@@ -34,8 +36,28 @@ from .services import ensure_user_defaults
 SECRETS_FILE = Path("/data/app-secrets.env")
 
 CONFIG_FORMAT = "adguardhome-toolbox-config"
-CONFIG_VERSION = 2
-SUPPORTED_CONFIG_VERSIONS = frozenset({1, 2})
+CONFIG_VERSION = 3
+SUPPORTED_CONFIG_VERSIONS = frozenset({1, 2, 3})
+
+_SYNC_OPTION_FIELDS = (
+    "verify_tls",
+    "sync_filtering_config",
+    "sync_block_lists",
+    "sync_allow_lists",
+    "sync_custom_rules",
+    "sync_dns",
+    "sync_rewrites",
+    "sync_clients",
+    "sync_blocked_services",
+    "sync_parental",
+    "sync_safebrowsing",
+    "sync_safesearch",
+    "sync_filter_lists",
+    "sync_parental_safebrowsing_safesearch",
+    "refresh_lists_after_sync",
+    "dry_run",
+    "dns_servers",
+)
 
 
 def toolbox_backup_display_name(when: datetime | None = None) -> str:
@@ -91,22 +113,7 @@ def build_toolbox_config_document(db: Session, user: User) -> dict[str, Any]:
         )
         for t in targets
     ]
-    sync_row = _row_dict(
-        opts,
-        fields=(
-            "verify_tls",
-            "sync_dns",
-            "sync_filter_lists",
-            "sync_custom_rules",
-            "sync_rewrites",
-            "sync_clients",
-            "sync_blocked_services",
-            "sync_parental_safebrowsing_safesearch",
-            "refresh_lists_after_sync",
-            "dry_run",
-            "dns_servers",
-        ),
-    )
+    sync_row = _row_dict(opts, fields=_SYNC_OPTION_FIELDS)
     sync_row["dns_servers"] = ""
     return {
         "format": CONFIG_FORMAT,
@@ -221,24 +228,12 @@ def apply_toolbox_config(db: Session, user: User, doc: dict[str, Any]) -> None:
         source_payload,
         ("url", "username", "password_enc", "enabled", "dns_servers", "connect_ip"),
     )
-    sync_payload = dict(doc["sync_options"])
+    sync_payload = normalize_sync_options(dict(doc["sync_options"]))
     sync_payload["dns_servers"] = ""
-    _apply_fields(
-        opts,
-        sync_payload,
-        (
-            "verify_tls",
-            "sync_dns",
-            "sync_filter_lists",
-            "sync_custom_rules",
-            "sync_rewrites",
-            "sync_clients",
-            "sync_blocked_services",
-            "sync_parental_safebrowsing_safesearch",
-            "refresh_lists_after_sync",
-            "dry_run",
-            "dns_servers",
-        ),
+    _apply_fields(opts, sync_payload, _SYNC_OPTION_FIELDS)
+    opts.sync_filter_lists = bool(opts.sync_block_lists and opts.sync_allow_lists)
+    opts.sync_parental_safebrowsing_safesearch = bool(
+        opts.sync_parental and opts.sync_safebrowsing and opts.sync_safesearch
     )
     _apply_fields(
         sched,

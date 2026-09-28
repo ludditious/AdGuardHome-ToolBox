@@ -20,6 +20,7 @@ from __future__ import annotations
 from typing import Any
 
 from .client import AdGuardClient
+from .sync_options import normalize_sync_options
 
 
 def _filter_key(entry: dict[str, Any], *, whitelist: bool) -> str:
@@ -45,45 +46,46 @@ def sync_filter_lists(
     source: dict[str, Any],
     *,
     dry_run: bool,
+    whitelist: bool,
 ) -> list[str]:
     log: list[str] = []
-    for whitelist in (False, True):
-        key = "whitelist_filters" if whitelist else "filters"
+    for wl in (whitelist,):
+        key = "whitelist_filters" if wl else "filters"
         src_list = _normalize_filters(source.get(key))
         tgt_status = client.get("/filtering/status")
         tgt_list = _normalize_filters(tgt_status.get(key))
-        src_map = {_filter_key(x, whitelist=whitelist): x for x in src_list}
-        tgt_map = {_filter_key(x, whitelist=whitelist): x for x in tgt_list}
+        src_map = {_filter_key(x, whitelist=wl): x for x in src_list}
+        tgt_map = {_filter_key(x, whitelist=wl): x for x in tgt_list}
 
         for k, entry in tgt_map.items():
             if k not in src_map:
-                msg = f"remove {'whitelist ' if whitelist else ''}list {entry['url']}"
+                msg = f"remove {'whitelist ' if wl else ''}list {entry['url']}"
                 log.append(msg)
                 if not dry_run:
                     client.post("/filtering/remove_url", {
                         "url": entry["url"],
-                        "whitelist": whitelist,
+                        "whitelist": wl,
                     })
 
         for k, entry in src_map.items():
             if k not in tgt_map:
-                msg = f"add {'whitelist ' if whitelist else ''}list {entry['url']}"
+                msg = f"add {'whitelist ' if wl else ''}list {entry['url']}"
                 log.append(msg)
                 if not dry_run:
                     client.post("/filtering/add_url", {
                         "name": entry["name"] or entry["url"],
                         "url": entry["url"],
-                        "whitelist": whitelist,
+                        "whitelist": wl,
                     })
             else:
                 tgt = tgt_map[k]
                 if tgt["enabled"] != entry["enabled"] or tgt["name"] != entry["name"]:
-                    msg = f"update {'whitelist ' if whitelist else ''}list {entry['url']}"
+                    msg = f"update {'whitelist ' if wl else ''}list {entry['url']}"
                     log.append(msg)
                     if not dry_run:
                         client.post("/filtering/set_url", {
                             "url": entry["url"],
-                            "whitelist": whitelist,
+                            "whitelist": wl,
                             "data": {
                                 "name": entry["name"] or entry["url"],
                                 "url": entry["url"],
@@ -317,7 +319,7 @@ def sync_blocked_services(client: AdGuardClient, data: dict[str, Any], *, dry_ru
     return [msg]
 
 
-def sync_parental_safe(client: AdGuardClient, snap: dict[str, Any], *, dry_run: bool) -> list[str]:
+def sync_parental(client: AdGuardClient, snap: dict[str, Any], *, dry_run: bool) -> list[str]:
     log: list[str] = []
     parental = snap.get("parental") or {}
     if parental.get("enabled"):
@@ -328,7 +330,11 @@ def sync_parental_safe(client: AdGuardClient, snap: dict[str, Any], *, dry_run: 
         log.append("disable parental")
         if not dry_run:
             client.post("/parental/disable", {})
+    return log
 
+
+def sync_safebrowsing(client: AdGuardClient, snap: dict[str, Any], *, dry_run: bool) -> list[str]:
+    log: list[str] = []
     sb = snap.get("safebrowsing") or {}
     if sb.get("enabled"):
         log.append("enable safebrowsing")
@@ -338,7 +344,11 @@ def sync_parental_safe(client: AdGuardClient, snap: dict[str, Any], *, dry_run: 
         log.append("disable safebrowsing")
         if not dry_run:
             client.post("/safebrowsing/disable", {})
+    return log
 
+
+def sync_safesearch(client: AdGuardClient, snap: dict[str, Any], *, dry_run: bool) -> list[str]:
+    log: list[str] = []
     ss = snap.get("safesearch") or {}
     if ss.get("enabled"):
         log.append("enable safesearch")
@@ -359,37 +369,48 @@ def apply_snapshot(
     snap: dict[str, Any],
     options: dict[str, Any],
 ) -> list[str]:
-    dry_run = bool(options.get("dry_run"))
+    opts = normalize_sync_options(options)
+    dry_run = bool(opts.get("dry_run"))
     log: list[str] = []
     filtering = snap.get("filtering") or {}
 
-    log.extend(sync_filtering_config(client, filtering, dry_run=dry_run))
+    if opts.get("sync_filtering_config", True):
+        log.extend(sync_filtering_config(client, filtering, dry_run=dry_run))
 
-    if options.get("sync_filter_lists", True):
-        log.extend(sync_filter_lists(client, filtering, dry_run=dry_run))
+    if opts.get("sync_block_lists", True):
+        log.extend(sync_filter_lists(client, filtering, dry_run=dry_run, whitelist=False))
 
-    if options.get("sync_custom_rules", True):
+    if opts.get("sync_allow_lists", True):
+        log.extend(sync_filter_lists(client, filtering, dry_run=dry_run, whitelist=True))
+
+    if opts.get("sync_custom_rules", True):
         log.extend(sync_custom_rules(client, filtering, dry_run=dry_run))
 
-    if options.get("sync_dns", True) and snap.get("dns"):
+    if opts.get("sync_dns", True) and snap.get("dns"):
         log.extend(sync_dns(client, snap["dns"], dry_run=dry_run))
 
-    if options.get("sync_rewrites", True):
+    if opts.get("sync_rewrites", True):
         rewrites = snap.get("rewrites") or []
         if isinstance(rewrites, dict):
             rewrites = rewrites.get("rewrites") or []
         log.extend(sync_rewrites(client, rewrites, dry_run=dry_run))
 
-    if options.get("sync_clients", True) and snap.get("clients") is not None:
+    if opts.get("sync_clients", True) and snap.get("clients") is not None:
         log.extend(sync_clients(client, snap["clients"], dry_run=dry_run))
 
-    if options.get("sync_blocked_services", True) and snap.get("blocked_services") is not None:
+    if opts.get("sync_blocked_services", True) and snap.get("blocked_services") is not None:
         log.extend(sync_blocked_services(client, snap["blocked_services"], dry_run=dry_run))
 
-    if options.get("sync_parental_safebrowsing_safesearch", True):
-        log.extend(sync_parental_safe(client, snap, dry_run=dry_run))
+    if opts.get("sync_parental", True):
+        log.extend(sync_parental(client, snap, dry_run=dry_run))
 
-    if options.get("refresh_lists_after_sync", True) and not dry_run:
+    if opts.get("sync_safebrowsing", True):
+        log.extend(sync_safebrowsing(client, snap, dry_run=dry_run))
+
+    if opts.get("sync_safesearch", True):
+        log.extend(sync_safesearch(client, snap, dry_run=dry_run))
+
+    if opts.get("refresh_lists_after_sync", True) and not dry_run:
         client.post("/filtering/refresh", {"whitelist": False})
         client.post("/filtering/refresh", {"whitelist": True})
         log.append("refreshed block/allow filter lists")

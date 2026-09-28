@@ -25,7 +25,7 @@ Run the published image or build from this repo ([web/README.md](web/README.md) 
 | **Dashboard** | Run **Sync now**; see recent run results |
 | **Source** | One enabled source: **IPv4 + admin port** (`http://` is assumed), username/password, **Test connection** |
 | **Targets** | Named targets with the same addressing; enable/disable per server; test each |
-| **Options** | Choose what to sync (DNS, lists, rules, rewrites, clients, blocked services, parental/safe search); TLS verify; refresh lists after sync; **dry run** |
+| **Options** | Per-area toggles: filtering on/off and interval, block lists, allow lists, custom rules, DNS, rewrites, clients, blocked services, parental, safe browsing, safe search; TLS verify; refresh lists after sync; **dry run** |
 | **Schedule** | Built-in **cron** (checks every minute, UTC): interval in minutes or hours, days Sun–Sat; automatic sync when due |
 | **Log** | Sync history (manual, cron, etc.); clear log |
 

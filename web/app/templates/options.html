@@ -1,17 +1,42 @@
 {% extends "base.html" %}
 {% block content %}
 <h1>Sync options</h1>
+<p class="muted small">Choose what to copy from the source to each target on sync. Restore from backup uses the same toggles unless you change them before restoring.</p>
 <form method="post" action="/options">
-  <label class="check"><input type="checkbox" name="verify_tls" {% if options.verify_tls %}checked{% endif %}> Verify TLS certificates</label>
-  <label class="check"><input type="checkbox" name="sync_dns" {% if options.sync_dns %}checked{% endif %}> Sync DNS settings</label>
-  <label class="check"><input type="checkbox" name="sync_filter_lists" {% if options.sync_filter_lists %}checked{% endif %}> Sync block/allow lists</label>
-  <label class="check"><input type="checkbox" name="sync_custom_rules" {% if options.sync_custom_rules %}checked{% endif %}> Sync custom rules</label>
-  <label class="check"><input type="checkbox" name="sync_rewrites" {% if options.sync_rewrites %}checked{% endif %}> Sync DNS rewrites</label>
-  <label class="check"><input type="checkbox" name="sync_clients" {% if options.sync_clients %}checked{% endif %}> Sync persistent clients</label>
-  <label class="check"><input type="checkbox" name="sync_blocked_services" {% if options.sync_blocked_services %}checked{% endif %}> Sync blocked services</label>
-  <label class="check"><input type="checkbox" name="sync_parental_safebrowsing_safesearch" {% if options.sync_parental_safebrowsing_safesearch %}checked{% endif %}> Sync parental / safe browsing / safe search</label>
-  <label class="check"><input type="checkbox" name="refresh_lists_after_sync" {% if options.refresh_lists_after_sync %}checked{% endif %}> Refresh lists after sync</label>
-  <label class="check"><input type="checkbox" name="dry_run" {% if options.dry_run %}checked{% endif %}> Dry run (no changes)</label>
+  <fieldset class="card">
+    <legend>Connection</legend>
+    <label class="check"><input type="checkbox" name="verify_tls" {% if options.verify_tls %}checked{% endif %}> Verify TLS certificates</label>
+  </fieldset>
+
+  <fieldset class="card">
+    <legend>Filtering</legend>
+    <label class="check"><input type="checkbox" name="sync_filtering_config" {% if options.sync_filtering_config %}checked{% endif %}> Sync filtering enabled and list update interval</label>
+    <label class="check"><input type="checkbox" name="sync_block_lists" {% if options.sync_block_lists %}checked{% endif %}> Sync block list subscriptions</label>
+    <label class="check"><input type="checkbox" name="sync_allow_lists" {% if options.sync_allow_lists %}checked{% endif %}> Sync allow list subscriptions</label>
+    <label class="check"><input type="checkbox" name="sync_custom_rules" {% if options.sync_custom_rules %}checked{% endif %}> Sync custom filtering rules (block and allow)</label>
+    <label class="check"><input type="checkbox" name="refresh_lists_after_sync" {% if options.refresh_lists_after_sync %}checked{% endif %}> Refresh block/allow lists after sync</label>
+  </fieldset>
+
+  <fieldset class="card">
+    <legend>DNS and clients</legend>
+    <label class="check"><input type="checkbox" name="sync_dns" {% if options.sync_dns %}checked{% endif %}> Sync DNS settings (upstreams, blocking mode, cache, etc.)</label>
+    <label class="check"><input type="checkbox" name="sync_rewrites" {% if options.sync_rewrites %}checked{% endif %}> Sync DNS rewrites</label>
+    <label class="check"><input type="checkbox" name="sync_clients" {% if options.sync_clients %}checked{% endif %}> Sync persistent clients</label>
+  </fieldset>
+
+  <fieldset class="card">
+    <legend>Services and safety</legend>
+    <label class="check"><input type="checkbox" name="sync_blocked_services" {% if options.sync_blocked_services %}checked{% endif %}> Sync blocked services (selection and schedule)</label>
+    <label class="check"><input type="checkbox" name="sync_parental" {% if options.sync_parental %}checked{% endif %}> Sync parental controls</label>
+    <label class="check"><input type="checkbox" name="sync_safebrowsing" {% if options.sync_safebrowsing %}checked{% endif %}> Sync safe browsing</label>
+    <label class="check"><input type="checkbox" name="sync_safesearch" {% if options.sync_safesearch %}checked{% endif %}> Sync safe search (including settings when enabled)</label>
+  </fieldset>
+
+  <fieldset class="card">
+    <legend>Run mode</legend>
+    <label class="check"><input type="checkbox" name="dry_run" {% if options.dry_run %}checked{% endif %}> Dry run (log actions only, no changes on targets)</label>
+  </fieldset>
+
   <button type="submit">Save options</button>
 </form>
 {% endblock %}

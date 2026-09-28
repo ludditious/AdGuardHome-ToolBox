@@ -22,7 +22,9 @@ from typing import Any
 
 FORMAT_ID = "adguardhome-toolbox-backup"
 _LEGACY_FORMAT_IDS = frozenset({"adguardhome-sync-backup", FORMAT_ID})
-FORMAT_VERSION = 1
+FORMAT_VERSION = 2
+_SUPPORTED_VERSIONS = frozenset({1, 2})
+_SNAPSHOT_DROP_KEYS = frozenset({"server_status"})
 
 _SECRET_KEYS = frozenset(
     {
@@ -44,12 +46,19 @@ def _strip_secrets(obj: Any) -> Any:
     return obj
 
 
+def _clean_snapshot(snap: dict[str, Any]) -> dict[str, Any]:
+    cleaned = _strip_secrets(snap)
+    for key in _SNAPSHOT_DROP_KEYS:
+        cleaned.pop(key, None)
+    return cleaned
+
+
 def build_backup_document(*, source_label: str, snapshot: dict[str, Any]) -> dict[str, Any]:
     return {
         "format": FORMAT_ID,
         "format_version": FORMAT_VERSION,
         "source_label": source_label,
-        "snapshot": _strip_secrets(snapshot),
+        "snapshot": _clean_snapshot(snapshot),
     }
 
 
@@ -59,13 +68,17 @@ def validate_backup_document(data: Any) -> dict[str, Any]:
     if data.get("format") not in _LEGACY_FORMAT_IDS:
         raise ValueError(f"Invalid backup format (expected {FORMAT_ID!r}).")
     version = data.get("format_version")
-    if version != FORMAT_VERSION:
-        raise ValueError(f"Unsupported backup version {version!r} (expected {FORMAT_VERSION}).")
+    if version not in _SUPPORTED_VERSIONS:
+        raise ValueError(
+            f"Unsupported backup version {version!r} (supported: {sorted(_SUPPORTED_VERSIONS)})."
+        )
     snap = data.get("snapshot")
     if not isinstance(snap, dict):
         raise ValueError("Backup is missing a snapshot object.")
     if "filtering" not in snap:
         raise ValueError("Snapshot is missing filtering settings.")
+    for key in _SNAPSHOT_DROP_KEYS:
+        snap.pop(key, None)
     return data
 
 
