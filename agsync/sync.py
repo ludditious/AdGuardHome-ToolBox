@@ -17,6 +17,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from .client import AdGuardClient, AdGuardError
@@ -243,12 +244,21 @@ def sync_rewrites(client: AdGuardClient, rewrites: list[dict[str, Any]], *, dry_
 
 def _client_list_from_snapshot(clients_payload: Any) -> list[dict[str, Any]] | None:
     if isinstance(clients_payload, list):
-        return clients_payload
-    if isinstance(clients_payload, dict):
-        for key in ("clients", "persistent_clients"):
-            val = clients_payload.get(key)
-            if isinstance(val, list):
-                return val
+        return [x for x in clients_payload if isinstance(x, dict)]
+    if not isinstance(clients_payload, dict):
+        return None
+    for key in ("clients", "persistent_clients"):
+        val = clients_payload.get(key)
+        if isinstance(val, list):
+            return [x for x in val if isinstance(x, dict)]
+        if isinstance(val, dict):
+            nested = val.get("clients")
+            if isinstance(nested, list):
+                return [x for x in nested if isinstance(x, dict)]
+    if clients_payload.get("auto_clients") is not None and "clients" not in clients_payload:
+        return []
+    if "clients" in clients_payload and clients_payload.get("clients") in (None, []):
+        return []
     return None
 
 
@@ -298,25 +308,81 @@ def _blocked_service_id_strings(data: dict[str, Any] | list[Any] | None) -> list
     return out
 
 
+def _target_blocked_service_catalog(client: AdGuardClient) -> set[str]:
+    try:
+        data = client.get("/blocked_services/all")
+    except AdGuardError:
+        return set()
+    if isinstance(data, dict):
+        items = data.get("blocked_services") or data.get("services") or []
+    elif isinstance(data, list):
+        items = data
+    else:
+        return set()
+    known: set[str] = set()
+    for item in items:
+        if isinstance(item, str):
+            known.add(item)
+        elif isinstance(item, dict):
+            sid = item.get("id") or item.get("name")
+            if isinstance(sid, str) and sid:
+                known.add(sid)
+    return known
+
+
+def _filter_blocked_service_ids(
+    client: AdGuardClient, ids: list[str]
+) -> tuple[list[str], list[str], list[str]]:
+    """Returns (ids_to_apply, skipped_not_on_target, log_lines)."""
+    log: list[str] = []
+    known = _target_blocked_service_catalog(client)
+    if not known:
+        return ids, [], log
+    apply_ids = [i for i in ids if i in known]
+    skipped = [i for i in ids if i not in known]
+    for sid in skipped:
+        log.append(f"skip blocked service {sid} (not available on this AdGuard Home version)")
+    return apply_ids, skipped, log
+
+
+def _push_blocked_services(
+    client: AdGuardClient, ids: list[str], schedule: dict[str, Any]
+) -> None:
+    payload = {"ids": ids, "schedule": schedule}
+    remaining = list(ids)
+    while remaining:
+        try:
+            client.put("/blocked_services/update", {**payload, "ids": remaining})
+            return
+        except AdGuardError as e:
+            err = str(e)
+            if "HTTP 404" in err or "HTTP 405" in err:
+                client.post("/blocked_services/set", remaining)
+                return
+            m = re.search(r'unknown blocked-service\s+"([^"]+)"', err, re.I)
+            if m and m.group(1) in remaining:
+                remaining.remove(m.group(1))
+                continue
+            raise
+
+
 def sync_blocked_services(client: AdGuardClient, data: dict[str, Any], *, dry_run: bool) -> list[str]:
     ids = _blocked_service_id_strings(data)
     schedule = (data or {}).get("schedule") if isinstance(data, dict) else None
     if not schedule:
         schedule = {"time_zone": "Local"}
-    payload = {"ids": ids, "schedule": schedule}
-    msg = f"blocked services ({len(ids)} selected)"
+    apply_ids, _skipped, filter_log = _filter_blocked_service_ids(client, ids)
+    log = list(filter_log)
+    msg = f"blocked services ({len(apply_ids)} of {len(ids)} selected)"
+    log.append(msg)
     if dry_run:
-        return [msg]
-    try:
-        client.put("/blocked_services/update", payload)
-    except AdGuardError as e:
-        err = str(e)
-        if "HTTP 404" in err or "HTTP 405" in err:
-            # Older AdGuard Home: POST /set expects a bare JSON array of id strings.
-            client.post("/blocked_services/set", ids)
-        else:
-            raise
-    return [msg]
+        return log
+    if not apply_ids and ids:
+        log.append("blocked services: none could be applied on this target (catalog mismatch)")
+        return log
+    if apply_ids:
+        _push_blocked_services(client, apply_ids, schedule)
+    return log
 
 
 def sync_parental(client: AdGuardClient, snap: dict[str, Any], *, dry_run: bool) -> list[str]:

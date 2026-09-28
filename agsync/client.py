@@ -338,6 +338,15 @@ class AdGuardClient:
 
 
 
+    @staticmethod
+    def _normalize_clients_for_snapshot(raw: Any) -> dict[str, Any]:
+        from .sync import _client_list_from_snapshot
+
+        lst = _client_list_from_snapshot(raw)
+        if lst is None:
+            lst = []
+        return {"clients": lst}
+
     def _export_blocked_services_config(self) -> dict[str, Any]:
         """Current blocked-service selection (ids + schedule), not the full service catalog."""
         try:
@@ -364,7 +373,7 @@ class AdGuardClient:
 
         snap["rewrites"] = self.get("/rewrite/list")
 
-        snap["clients"] = self.get("/clients")
+        snap["clients"] = self._normalize_clients_for_snapshot(self.get("/clients"))
 
         snap["blocked_services"] = self._export_blocked_services_config()
 
