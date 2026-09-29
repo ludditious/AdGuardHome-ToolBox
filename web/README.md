@@ -1,10 +1,10 @@
 # AdGuard Home ToolBox, Web (Docker)
 
-Browser UI and API for syncing one **source** AdGuard Home to many **targets**. Uses the shared Python package in `../agsync` (same sync engine as the CLI).
+Browser UI to sync one **source** AdGuard Home to many **targets**. Uses the shared Python package in `../agsync`.
 
-**Self-contained:** no `.env` required. On first start the container generates `SECRET_KEY` and `CRON_SECRET` in `/data/app-secrets.env`.
+**Self-contained:** no `.env` required. First start generates `SECRET_KEY` and `CRON_SECRET` in `/data/app-secrets.env`.
 
-For a full feature list (backups, schedule, settings, updates), see the [repository README](../README.md).
+Full feature list: [repository README](../README.md).
 
 ## Image and repo
 
@@ -13,10 +13,11 @@ For a full feature list (backups, schedule, settings, updates), see the [reposit
 | **GitHub** | [ludditious/AdGuardHome-ToolBox](https://github.com/ludditious/AdGuardHome-ToolBox) |
 | **GHCR package** | `adguardhome-toolbox` |
 | **Pull** | `ghcr.io/ludditious/adguardhome-toolbox:latest` |
+| **Package UI** | [pkgs/container/adguardhome-toolbox](https://github.com/ludditious/AdGuardHome-ToolBox/pkgs/container/adguardhome-toolbox) |
 
-CI: [`.github/workflows/docker-publish.yml`](../.github/workflows/docker-publish.yml) builds and pushes on push to **`main`** or tag **`v*`**. Each build writes **`version.txt`** (for example `2026.09.25-30`); the UI shows that as **Version** and **Revised** `YYYY-MM-DD-<build#>`.
+[`.github/workflows/docker-publish.yml`](../.github/workflows/docker-publish.yml) builds and pushes on **`main`** or tag **`v*`**. Each build updates **`version.txt`** (example `2026.09.28-39`). The UI shows **Version** and **Revised** with the same build number. CI links the package to this repository after push.
 
-Make the package **Public** under **Packages → adguardhome-toolbox → Package settings** if you want anonymous `docker pull`.
+Make the package **Public** in package settings for anonymous `docker pull`.
 
 ## Pull and run
 
@@ -30,66 +31,44 @@ docker run -d --name adguardhome-toolbox \
   ghcr.io/ludditious/adguardhome-toolbox:latest
 ```
 
-Compose from this repo:
+Compose: `docker compose -f web/docker-compose.pull.yml up -d`
 
-```bash
-docker compose -f web/docker-compose.pull.yml up -d
-```
+Open **http://localhost:8080** (or your mapped port). Configure **Source**, **Targets**, **Options**, **Schedule**, **Backup**.
 
-Open **http://localhost:8080** (or your mapped port). Sign in, configure **Source** (IPv4 + port), **Targets**, **Options**, and **Schedule**.
-
-If the package is private:
-
-```bash
-echo YOUR_GITHUB_PAT | docker login ghcr.io -u YOUR_GITHUB_USERNAME --password-stdin
-```
+Private package: `docker login ghcr.io` with a PAT that includes `read:packages`.
 
 ## Source / target addressing
 
-Connections use **`http://IP:port`** to the AdGuard Home **admin UI** (not DNS port 53). Hostnames are not required; use IPv4 and the port shown in AdGuard Home settings.
+Connections use **`http://IP:port`** to the AdGuard Home **admin UI** (not DNS port 53).
 
-### DNS inside the container
-
-Resolution uses the container resolver (`/etc/resolv.conf`). Optional environment (not stored in the app DB):
-
-| Variable | Purpose |
-|----------|---------|
-| **`CUSTOM_DNS`** | Extra nameservers for the container |
-| **`AGH_SYNC_HOST_ALIASES`** | `hostname:ip` pairs |
-| **`AGH_SYNC_DNS_FALLBACK`** | Only if you set it explicitly |
-
-Update checks can fall back to public DNS and then the source IP when reaching GitHub for `version.txt`.
+Optional container env (not stored in the app DB): `CUSTOM_DNS`, `AGH_SYNC_HOST_ALIASES`, `AGH_SYNC_DNS_FALLBACK`.
 
 ## Cron
 
-`web/cron/crontab` runs **`cron-tick.sh`** every minute, which POSTs to `/internal/cron/tick` with `CRON_SECRET`. That drives **scheduled sync** and **automated source backups** (when enabled under Settings).
+`web/cron/crontab` runs every minute and POSTs to `/internal/cron/tick`. That runs **scheduled sync** and **automated source backups** (when enabled under Settings).
 
 ## Optional environment
 
 | Variable | Description |
 |----------|-------------|
-| `SECRET_KEY` | Override session + field encryption key |
+| `SECRET_KEY` | Override session + field encryption |
 | `CRON_SECRET` | Override cron bearer token |
 | `DATABASE_URL` | Default SQLite at `/data/aghomesync.db` |
 | `PORT` | Default `8080` |
 
-Back up the **`/data`** volume (database, secrets, backup records).
+Back up **`/data`**.
 
 ## Build locally
 
-From the **repository root** (context must include `agsync/` and `version.txt`):
+From repository root:
 
 ```bash
 docker compose -f web/docker-compose.yml up -d --build
 ```
 
-Or:
+Or: `docker build -t adguardhome-toolbox:latest .`
 
-```bash
-docker build -t adguardhome-toolbox:latest .
-```
-
-## Local dev (no Docker)
+## Local dev
 
 ```bash
 cd web
@@ -103,4 +82,4 @@ uvicorn app.main:app --reload --port 8080
 
 ---
 
-*Revised: 2026-09-26*
+*Revised: 2026-09-29*

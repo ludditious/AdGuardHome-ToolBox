@@ -9,14 +9,17 @@ The project includes:
 - **Docker web app** (recommended): browser UI, cron scheduling, backups, account settings
 - **CLI** (optional): `python -m agsync` with YAML config for scripts and automation
 
-**GitHub:** [ludditious/AdGuardHome-ToolBox](https://github.com/ludditious/AdGuardHome-ToolBox)  
-**Container image:** `ghcr.io/ludditious/adguardhome-toolbox:latest`
+| | |
+|--|--|
+| **GitHub** | [ludditious/AdGuardHome-ToolBox](https://github.com/ludditious/AdGuardHome-ToolBox) |
+| **Container image** | `ghcr.io/ludditious/adguardhome-toolbox:latest` |
+| **Package page** | [pkgs/container/adguardhome-toolbox](https://github.com/ludditious/AdGuardHome-ToolBox/pkgs/container/adguardhome-toolbox) |
+
+CI publishes the image on every push to `main` (see [web/README.md](web/README.md)).
 
 ---
 
 ## Docker web app features
-
-Run the published image or build from this repo ([web/README.md](web/README.md) for pull, compose, and GHCR details).
 
 ### Sync
 
@@ -25,38 +28,45 @@ Run the published image or build from this repo ([web/README.md](web/README.md) 
 | **Dashboard** | Run **Sync now**; see recent run results |
 | **Source** | One enabled source: **IPv4 + admin port** (`http://` is assumed), username/password, **Test connection** |
 | **Targets** | Named targets with the same addressing; enable/disable per server; test each |
-| **Options** | Per-area toggles: filtering on/off and interval, block lists, allow lists, custom rules, DNS, rewrites, clients, blocked services, parental, safe browsing, safe search; TLS verify; refresh lists after sync; **dry run** |
+| **Options** | Grouped toggles for each sync area (see table below); TLS verify; refresh lists after sync; **dry run** |
 | **Schedule** | Built-in **cron** (checks every minute, UTC): interval in minutes or hours, days Sun–Sat; automatic sync when due |
-| **Log** | Sync history (manual, cron, etc.); clear log |
+| **Log** | Per-run log with **per-target** sections; failed targets show AdGuard API messages (HTTP status and body), not generic errors |
 
-The sync engine applies sensible **DNS payload sanitization** when pushing to targets (for example skips private reverse-DNS upstreams and other read-only or environment-specific fields) so cloud or remote targets are less likely to reject config.
+**Sync behavior notes:**
+
+- **DNS** payloads are sanitized for targets (private PTR handling, domain-specific upstream lines, no DHCP or listen ports) so remote/cloud nodes are less likely to reject config.
+- **Blocked services**: only service IDs that exist on the **target’s** catalog are applied; others are **skipped** and logged (handles older AdGuard Home or missing apps like a source-only service name).
+- **Persistent clients**: source snapshots normalize `/clients` JSON so mixed AdGuard Home versions parse consistently.
+- A failure on one target does not stop other targets in the same run.
 
 ### Backup and restore
 
 | Area | What you can do |
 |------|------------------|
-| **AdGuard Home (source)** | **Manual backups** of all source settings (no AdGuard login secrets in the file); **automated daily backups** when enabled in Settings; separate lists with **Previous / Next** paging |
-| **Retention** | Automated backups roll off after the period you choose (1 day through 120 days); **manual backups are never deleted automatically** |
-| **Actions** | Download JSON, restore to source, delete; restore from uploaded file |
-| **ToolBox configuration** | Backup/restore app config (source, targets, sync options, schedule, encrypted secrets) so a new container volume can recover saved AdGuard passwords and layout |
+| **AdGuard Home (source)** | **Manual backups** of source settings (no AdGuard login secrets); **automated daily backups** when enabled in Settings; **separate lists** with **Previous / Next** paging (10 per page) |
+| **Retention** | Automated backups expire after 1 day through 120 days (Settings); **manual backups are never auto-deleted** |
+| **Actions** | Download JSON, restore to source (respects current Options toggles), delete, restore from upload |
+| **ToolBox configuration** | Backup/restore source, targets, **all sync option toggles**, schedule, update-check preference, and container encryption keys (recover saved AdGuard passwords after a new volume; not your ToolBox login) |
+
+**Backup formats:** AdGuard snapshots use `adguardhome-toolbox-backup` (v2, no runtime server status). ToolBox config uses `adguardhome-toolbox-config` (v3).
 
 ### Settings and account
 
 | Area | What you can do |
 |------|------------------|
-| **Password** | Change the ToolBox login password |
-| **Password recovery** | Three security questions for **Forgot password**; answers stored **encrypted at rest** and visible on Settings for review |
-| **Automated source backup** | Enable/disable daily automated AdGuard Home source backup; retention dropdown (1 day through 120 days) |
-| **Updates** | Optional check on sign-in against GitHub `version.txt` for a newer Docker image; **Update** link in the nav when a newer build is available |
+| **Password** | Change ToolBox login password |
+| **Password recovery** | Three security questions for **Forgot password**; answers **encrypted at rest** and shown on Settings for review |
+| **Automated source backup** | Enable daily cron backup of the source; retention dropdown |
+| **Updates** | Optional sign-in check against GitHub `version.txt`; **Update** in the nav when a newer image exists |
 
 ### UI and ops
 
-- **Light / dark** theme (persisted in the browser)
-- **About**: version and revised build id from the image; links to repo, package, and licensing
-- **Self-contained container**: `SECRET_KEY` and `CRON_SECRET` generated on first start under `/data`; SQLite database on the volume
-- **Health**: `GET /health` for probes
+- **Light / dark** theme (browser localStorage)
+- **About / login footer**: **Version** `YYYY.MM.DD-<build>` and **Revised** `YYYY-MM-DD-<build>` from the image `version.txt`
+- **Self-contained container**: `SECRET_KEY` and `CRON_SECRET` under `/data`; SQLite on the volume
+- **Health**: `GET /health`
 
-Default ToolBox login after first deploy is documented on the sign-in page until you change the password.
+Default ToolBox login is documented on the sign-in page until you change the password.
 
 ---
 
@@ -72,32 +82,35 @@ docker run -d --name adguardhome-toolbox \
   ghcr.io/ludditious/adguardhome-toolbox:latest
 ```
 
-Open the UI on port **8080** (or map another host port). Back up the **`/data`** volume.
+Open port **8080** (or your mapped port). Back up the **`/data`** volume.
 
 ---
 
-## What is synced (API overview)
+## Sync options (Options page)
 
-| Area | API (typical) |
-|------|----------------|
-| Filtering on/off + update interval | `/filtering/config` |
-| Block/allow list subscriptions | add/remove/set URL |
-| Custom rules | `/filtering/set_rules` |
-| DNS upstreams, blocking mode, cache, etc. | `/dns_config` |
-| DNS rewrites | replace via `/rewrite/*` |
-| Persistent clients | replace via `/clients/*` |
-| Blocked services | `/blocked_services/set` |
-| Parental / safe browsing / safe search | enable + settings |
+Each row can be turned off independently.
 
-### Usually not synced (per host)
+| Toggle | What it copies |
+|--------|----------------|
+| Filtering enabled + list update interval | `/filtering/config` |
+| Block list subscriptions | block list URLs, names, enabled state |
+| Allow list subscriptions | allow list (whitelist) subscriptions |
+| Custom filtering rules | block and allow user rules |
+| DNS settings | `/dns_config` (sanitized) |
+| DNS rewrites | full replace on target |
+| Persistent clients | replace persistent clients |
+| Blocked services | selected IDs + schedule (target-aware) |
+| Parental controls | enable/disable |
+| Safe browsing | enable/disable |
+| Safe search | enable/disable and settings when on |
+| Refresh lists after sync | post-sync filter refresh (not a data copy) |
+| Dry run | log only, no target changes |
 
-Listen address, web port, TLS/DoH/DoT, DHCP binding, query stats history, and AdGuard admin passwords (unless you set them on each node yourself).
+**Not synced:** runtime server status, listen/web ports, TLS/DoH/DoT, DHCP, stats/history, AdGuard admin passwords.
 
 ---
 
 ## CLI (YAML config, optional)
-
-For automation outside Docker:
 
 ```powershell
 python -m venv .venv
@@ -107,30 +120,30 @@ copy config.example.yaml config.yaml
 python -m agsync -c config.yaml
 ```
 
-Dry run, export-only, and single-target flags are supported; see `config.example.yaml`.
+`config.example.yaml` lists the same option keys as the web UI. Dry run, export-only, and single-target flags are supported.
 
 ---
 
 ## Requirements
 
-- Python **3.10+** for local CLI; **3.12** in the official Docker image
-- AdGuard Home **v0.107+** on source and targets
-- Network path from the ToolBox host/container to each AdGuard Home **admin UI** port
+- Python **3.10+** (CLI); **3.12** in the official Docker image
+- AdGuard Home **v0.107+** on source and targets (newer targets may support fewer blocked-service IDs)
+- Network path to each AdGuard Home **admin UI** port
 
 ---
 
 ## Security notes
 
 - Protect `config.yaml` and the Docker **`/data`** volume (database, secrets, backups).
-- Prefer HTTPS on AdGuard Home in production; enable **Verify TLS** in sync options when certificates are valid.
-- ToolBox backup files contain sensitive configuration. Store them privately.
+- Prefer HTTPS on AdGuard Home in production; enable **Verify TLS** when certificates are valid.
+- Backup files contain sensitive configuration. Store them privately.
 
 ---
 
 ## Similar projects
 
-- [adguardhome-sync](https://github.com/bakito/adguardhome-sync) (Go): mature Docker-oriented sync; this repo is a Python stack you can extend (web UI, backups, scheduling).
+- [adguardhome-sync](https://github.com/bakito/adguardhome-sync) (Go): mature Docker-oriented sync; this repo is a Python stack with web UI, backups, and granular options.
 
 ---
 
-*Revised: 2026-09-26*
+*Revised: 2026-09-29*

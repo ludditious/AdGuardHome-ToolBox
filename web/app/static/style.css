@@ -146,6 +146,16 @@ button.copy-cmd:hover { border-color: var(--accent); color: var(--accent); }
 }
 .narrow { max-width: 420px; }
 label { display: block; margin-bottom: 0.75rem; }
+fieldset.card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.75rem 1rem 1rem;
+  margin-bottom: 1rem;
+}
+fieldset.card legend {
+  padding: 0 0.35rem;
+  font-weight: 600;
+}
 input[type=text], input[type=url], input[type=email], input[type=password], input[type=number] {
   width: 100%;
   margin-top: 0.25rem;
